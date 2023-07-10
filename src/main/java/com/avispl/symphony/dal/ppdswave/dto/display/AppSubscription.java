@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
  */
-package com.avispl.symphony.dal.communicator.dto.display;
+package com.avispl.symphony.dal.ppdswave.dto.display;
 
 /**
  * TBD
