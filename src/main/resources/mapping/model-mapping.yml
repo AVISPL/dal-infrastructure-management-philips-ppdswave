@@ -1,0 +1,165 @@
+models:
+  - model:
+      name: Generic
+      vendor: Semtech
+      node: displays
+      filter: get("id") != null
+      mapping:
+        type: "AV Devices"
+        category: "Monitors"
+        serialNumber: at("/serialNumber")?.asText()
+        deviceId: at("/id")?.asText()
+        deviceName: at("/alias")?.asText()
+        deviceMake: "Philips"
+        deviceModel: "Unknown"
+        deviceOnline: at("/presence/connected")?.asBoolean()
+      properties:
+        DisplayType: at("/displayType")
+  - model:
+      name: WaveDevice
+      filter: get("serialNumber") == null && get("displayType") != null
+      properties:
+        DisplayType: at("/displayType")
+        AgentVersion: at("/agentVersion")
+        CommercialTypeNumber: at("/commercialTypeNumber")
+        AgentReleaseChannel: at("/agentReleaseChannel/reported")
+        # System info
+        System#HasEmptyShadow: at("/hasEmptyShadow")
+        System#HasSensitiveData: at("/hasSensitiveData")
+        System#InfraRedControl: at("/infraRedControl/reported")
+        System#KeyboardControl: at("/keyboardControl/reported")
+        System#LEDStripColor: at("/ledStripColor/reported")
+        System#PortsControl: at("/portsControl/reported")
+        System#RecommendedSettings: at("/recommendedSettings/reported/recommended")
+        System#Alias: at("/alias")
+        System#RecommendedSettingsWarnings: ""
+        # Video info
+        Video#Brightness: at("/brightness/reported")
+        Video#Orientation: at("/orientation/reported")
+        Video#InputSource: at("/inputSource/current/reported/source")
+        Video#SignalDetection: at("/signalDetection/reported")
+        # Network info
+        NetworkInformation#MACAddress: at("/networkInformation/ethernetMacAddress")
+        NetworkInformation#IPAddress: at("/networkInformation/localIPAddress")
+        NetworkInformation#NetworkType: at("/networkInformation/networkType")
+        NetworkInformation#WiFiMACAddress: at("/networkInformation/wifiMacAddress")
+        # Network interfaces info
+        NetworkInterfaces#IPAddress: at("/networkInterfaces/ip")
+        NetworkInterfaces#Active: at("/networkInterfaces/active")
+        NetworkInterfaces#MACAddress: at("/networkInterfaces/mac")
+        NetworkInterfaces#Name: at("/networkInterfaces/name")
+        NetworkInterfaces#SSID: at("/networkInterfaces/ssid")
+        # Power info
+        Power#State: at("/power/reported")
+        Power#LastUpdated: at("/power/reportedAt")
+        Power#Reboot: "Reboot"
+        Power#Mode: "Mode"
+        # Platform info
+        Platform#Name: at("/platform/name")
+        Platform#Version: at("/platform/version")
+        # Presence info
+        #Presence#Connected: at("/presence/connected")
+        PresenceLastUpdated: at("/presence/timestamp")
+        # Screenshot info
+        Screenshot#CreatedAt: at("/screenshot/createdAt")
+        Screenshot#URL: at("/screenshot/url")
+        Screenshot#Create: "Create"
+        # Site info
+        Site#Address: at("/site/address")
+        Site#ID: at("/site/id")
+        Site#Name: at("/site/name")
+        Site#TimeZone: at("/timeZone/reported")
+        # Audio info
+        Audio#Mute: at("/volume/isMuted/reported")
+        Audio#Volume: at("/volume/level/reported")
+        # Firmware
+        Firmware#Version: at("/firmware/android/version")
+        Firmware#LatestJobCreated: at("/firmware/android/latestJob/createdAt")
+        Firmware#LatestJobPlanned: at("/firmware/android/latestJob/plannedAt")
+        Firmware#LatestJobTargetVersion: at("/firmware/android/latestJob/targetVersion")
+        Firmware#ScalerVersion: at("/firmware/scaler/version")
+        # Customer
+        Customer#Name: at("/customer/name")
+        Customer#Handle: at("/customer/handle")
+        Customer#AvatarUrl: at("/customer/avatarUrl")
+        Customer#SiteName: at("/site/name")
+        Customer#SiteAddress: at("/site/address")
+        # Playlist
+        Playlist#Synchronized: at("/playlist/sync")
+        Playlist#CurrentDescription: at("/playlist/current/description")
+        Playlist#CurrentOutOfSync: at("/playlist/current/isOutOfSync")
+        Playlist#CurrentTampered: at("/playlist/current/isTampered")
+        # Detailed Groups
+        AppSubscriptions: ""
+      control:
+        Audio#Mute:
+          type: Switch
+          value: at("/volume/isMuted/reported")
+          labelOn: "Mute"
+          labelOff: "Unmute"
+        Audio#Volume:
+          type: Slider
+          labelStart: at("/volume/limits/min/reported")
+          labelEnd: at("/volume/limits/max/reported")
+          rangeStart: at("/volume/limits/min/reported")
+          rangeEnd: at("/volume/limits/max/reported")
+          value: at("/volume/level/reported")
+        Video#Brightness:
+          type: Slider
+          labelStart: "0%"
+          labelEnd: "100%"
+          rangeStart: 0
+          rangeEnd: 100
+          value: at("/brightness/reported")
+        Video#Orientation:
+          type: DropDown
+          options: "LANDSCAPE,PORTRAIT"
+          labels: "LANDSCAPE,PORTRAIT"
+          value: at("/brightness/reported")
+        Video#InputSource:
+          type: DropDown
+          options: at("/inputSource/available").toString().replaceAll("[^a-zA-Z0-9-,]", "")
+          labels: at("/inputSource/available").toString().replaceAll("[^a-zA-Z0-9-,]", "")
+          value: at("/inputSource/current/reported/source")
+        Power#Mode:
+          type: Switch
+          value: at("/power/reported")?.asText().equals("ON")
+          labelOn: "On"
+          labelOff: "Standby"
+        Screenshot#Create:
+          type: Button
+          label: "Create"
+          labelPressed: "Creating"
+          gracePeriod: 0
+        Power#Reboot:
+          type: Button
+          label: "Reboot"
+          labelPressed: "Rebooting"
+          gracePeriod: 60000
+        System#InfraRedControl:
+          type: DropDown
+          options: "LOCKED,POWER_ONLY,UNLOCKED,VOLUME_ONLY"
+          labels: "LOCKED,POWER_ONLY,UNLOCKED,VOLUME_ONLY"
+          value: at("/infraRedControl/reported")
+        System#KeyboardControl:
+          type: DropDown
+          options: "LOCKED,POWER_ONLY,UNLOCKED,VOLUME_ONLY"
+          labels: "LOCKED,POWER_ONLY,UNLOCKED,VOLUME_ONLY"
+          value: at("/keyboardControl/reported")
+        System#PortsControl:
+          type: DropDown
+          options: "LOCKED,UNLOCKED"
+          labels: "LOCKED,UNLOCKED"
+          value: at("/portsControl/reported")
+        System#LEDStripColor:
+          type: DropDown
+          options: "BLUE,CYAN,GREEN,MAGENTA,RED,UNSPECIFIED,WHITE,YELLOW"
+          labels: "BLUE,CYAN,GREEN,MAGENTA,RED,UNSPECIFIED,WHITE,YELLOW"
+          value: at("/ledStripColor/reported")
+        System#Alias:
+          type: Text
+          value: at("/alias")
+
+
+
+
