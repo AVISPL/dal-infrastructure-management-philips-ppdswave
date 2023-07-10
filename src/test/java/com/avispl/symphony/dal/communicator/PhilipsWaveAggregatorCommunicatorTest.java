@@ -19,7 +19,7 @@ public class PhilipsWaveAggregatorCommunicatorTest {
     @BeforeEach
     public void init() throws Exception {
         philipsWaveAggregatorCommunicator = new PhilipsWaveAggregatorCommunicator();
-        philipsWaveAggregatorCommunicator.setPassword("***REMOVED***");
+        philipsWaveAggregatorCommunicator.setPassword("");
         philipsWaveAggregatorCommunicator.setHost("api.wave.ppds.com");
         philipsWaveAggregatorCommunicator.setProtocol("https");
         philipsWaveAggregatorCommunicator.setPort(443);
