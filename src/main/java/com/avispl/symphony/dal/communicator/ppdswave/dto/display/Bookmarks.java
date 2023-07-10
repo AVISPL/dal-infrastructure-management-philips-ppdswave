@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
  */
-package com.avispl.symphony.dal.ppdswave.dto.display;
+package com.avispl.symphony.dal.communicator.ppdswave.dto.display;
 
-import com.avispl.symphony.dal.ppdswave.dto.ReportedDataWrapper;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.ReportedDataWrapper;
 
 /**
  * Device bookmarks details container

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
  */
-package com.avispl.symphony.dal.ppdswave;
+package com.avispl.symphony.dal.communicator.ppdswave;
 
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
@@ -14,18 +14,18 @@ import com.avispl.symphony.dal.aggregator.parser.AggregatedDeviceProcessor;
 import com.avispl.symphony.dal.aggregator.parser.PropertiesMapping;
 import com.avispl.symphony.dal.aggregator.parser.PropertiesMappingParser;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
-import com.avispl.symphony.dal.ppdswave.dto.CustomerByHandle;
-import com.avispl.symphony.dal.ppdswave.dto.Data;
-import com.avispl.symphony.dal.ppdswave.dto.ReportedDataWrapper;
-import com.avispl.symphony.dal.ppdswave.dto.ResponseWrapper;
-import com.avispl.symphony.dal.ppdswave.dto.display.Alert;
-import com.avispl.symphony.dal.ppdswave.dto.display.Bookmarks;
-import com.avispl.symphony.dal.ppdswave.dto.display.Display;
-import com.avispl.symphony.dal.ppdswave.dto.display.Group;
-import com.avispl.symphony.dal.ppdswave.dto.display.power.LatestJob;
-import com.avispl.symphony.dal.ppdswave.dto.display.power.PowerSchedule;
-import com.avispl.symphony.dal.ppdswave.dto.display.power.Schedule;
-import com.avispl.symphony.dal.ppdswave.dto.display.power.TimeBlock;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.ReportedDataWrapper;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.ResponseWrapper;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Alert;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Bookmarks;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Display;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Group;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.LatestJob;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.PowerSchedule;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.Schedule;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.TimeBlock;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.CustomerByHandle;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.Data;
 import com.avispl.symphony.dal.util.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
