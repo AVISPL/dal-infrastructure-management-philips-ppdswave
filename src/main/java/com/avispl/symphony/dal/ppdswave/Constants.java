@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
  */
-package com.avispl.symphony.dal.communicator;
+package com.avispl.symphony.dal.ppdswave;
 
 /**
  * Aggregator constants, includes monitor/control Property names and GraphQL paths

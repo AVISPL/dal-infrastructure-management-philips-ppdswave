@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
  */
-package com.avispl.symphony.dal.communicator;
+package com.avispl.symphony.dal.ppdswave;
 
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
@@ -19,7 +19,7 @@ public class PhilipsWaveAggregatorCommunicatorTest {
     @BeforeEach
     public void init() throws Exception {
         philipsWaveAggregatorCommunicator = new PhilipsWaveAggregatorCommunicator();
-        philipsWaveAggregatorCommunicator.setPassword("");
+        philipsWaveAggregatorCommunicator.setPassword("***REMOVED***");
         philipsWaveAggregatorCommunicator.setHost("api.wave.ppds.com");
         philipsWaveAggregatorCommunicator.setProtocol("https");
         philipsWaveAggregatorCommunicator.setPort(443);
@@ -95,7 +95,6 @@ public class PhilipsWaveAggregatorCommunicatorTest {
         philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
         Thread.sleep(30000);
         philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
-
         ControllableProperty controllableProperty = new ControllableProperty();
         controllableProperty.setValue("10.0");
         controllableProperty.setProperty("Audio#Volume");

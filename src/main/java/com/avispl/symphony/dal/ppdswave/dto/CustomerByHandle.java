@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
  */
-package com.avispl.symphony.dal.communicator.dto;
+package com.avispl.symphony.dal.ppdswave.dto;
 
-import com.avispl.symphony.dal.communicator.dto.display.Display;
+import com.avispl.symphony.dal.ppdswave.dto.display.Display;
 
 import java.util.List;
 
