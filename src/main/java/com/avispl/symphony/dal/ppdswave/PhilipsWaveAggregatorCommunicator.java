@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2023 AVI-SPL, Inc. All Rights Reserved.
  */
-package com.avispl.symphony.dal.communicator;
+package com.avispl.symphony.dal.ppdswave;
 
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
@@ -13,18 +13,19 @@ import com.avispl.symphony.api.dal.monitor.aggregator.Aggregator;
 import com.avispl.symphony.dal.aggregator.parser.AggregatedDeviceProcessor;
 import com.avispl.symphony.dal.aggregator.parser.PropertiesMapping;
 import com.avispl.symphony.dal.aggregator.parser.PropertiesMappingParser;
-import com.avispl.symphony.dal.communicator.dto.CustomerByHandle;
-import com.avispl.symphony.dal.communicator.dto.Data;
-import com.avispl.symphony.dal.communicator.dto.ReportedDataWrapper;
-import com.avispl.symphony.dal.communicator.dto.ResponseWrapper;
-import com.avispl.symphony.dal.communicator.dto.display.Alert;
-import com.avispl.symphony.dal.communicator.dto.display.Bookmarks;
-import com.avispl.symphony.dal.communicator.dto.display.Display;
-import com.avispl.symphony.dal.communicator.dto.display.Group;
-import com.avispl.symphony.dal.communicator.dto.display.power.LatestJob;
-import com.avispl.symphony.dal.communicator.dto.display.power.PowerSchedule;
-import com.avispl.symphony.dal.communicator.dto.display.power.Schedule;
-import com.avispl.symphony.dal.communicator.dto.display.power.TimeBlock;
+import com.avispl.symphony.dal.communicator.RestCommunicator;
+import com.avispl.symphony.dal.ppdswave.dto.CustomerByHandle;
+import com.avispl.symphony.dal.ppdswave.dto.Data;
+import com.avispl.symphony.dal.ppdswave.dto.ReportedDataWrapper;
+import com.avispl.symphony.dal.ppdswave.dto.ResponseWrapper;
+import com.avispl.symphony.dal.ppdswave.dto.display.Alert;
+import com.avispl.symphony.dal.ppdswave.dto.display.Bookmarks;
+import com.avispl.symphony.dal.ppdswave.dto.display.Display;
+import com.avispl.symphony.dal.ppdswave.dto.display.Group;
+import com.avispl.symphony.dal.ppdswave.dto.display.power.LatestJob;
+import com.avispl.symphony.dal.ppdswave.dto.display.power.PowerSchedule;
+import com.avispl.symphony.dal.ppdswave.dto.display.power.Schedule;
+import com.avispl.symphony.dal.ppdswave.dto.display.power.TimeBlock;
 import com.avispl.symphony.dal.util.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -39,9 +40,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
-import static com.avispl.symphony.dal.communicator.Constants.MonitoredProperties.*;
-import static com.avispl.symphony.dal.communicator.Constants.ControlProperties.*;
-import static com.avispl.symphony.dal.communicator.Constants.GraphQLProperties.*;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -342,43 +340,43 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
         boolean controlPropagated = true;
         switch (command) {
-            case CONTROL_AUDIO_MUTE:
+            case Constants.ControlProperties.CONTROL_AUDIO_MUTE:
                 commandChangeMuteStatus(deviceId, String.valueOf("1".equals(value)));
                 break;
-            case CONTROL_AUDIO_VOLUME:
+            case Constants.ControlProperties.CONTROL_AUDIO_VOLUME:
                 commandChangeVolume(deviceId, value);
                 break;
-            case CONTROL_VIDEO_BRIGHTNESS:
+            case Constants.ControlProperties.CONTROL_VIDEO_BRIGHTNESS:
                 commandChangeBrightness(deviceId, value);
                 break;
-            case CONTROL_VIDEO_ORIENTATION:
+            case Constants.ControlProperties.CONTROL_VIDEO_ORIENTATION:
                 commandChangeOrientation(deviceId, value);
                 break;
-            case CONTROL_VIDEO_INPUT_SOURCE:
+            case Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE:
                 commandChangeInput(deviceId, value);
                 break;
-            case CONTROL_POWER_MODE:
+            case Constants.ControlProperties.CONTROL_POWER_MODE:
                 commandChangePowerState(deviceId, value);
                 break;
-            case CONTROL_SCREENSHOT_CREATE:
+            case Constants.ControlProperties.CONTROL_SCREENSHOT_CREATE:
                 commandTakeScreenshot(deviceId);
                 break;
-            case CONTROL_POWER_REBOOT:
+            case Constants.ControlProperties.CONTROL_POWER_REBOOT:
                 commandReboot(deviceId);
                 break;
-            case CONTROL_IR_CONTROL:
+            case Constants.ControlProperties.CONTROL_IR_CONTROL:
                 commandChangeIRMode(deviceId, value);
                 break;
-            case CONTROL_KEYBOARD_CONTROL:
+            case Constants.ControlProperties.CONTROL_KEYBOARD_CONTROL:
                 commandChangeKeyboardMode(deviceId, value);
                 break;
-            case CONTROL_LED_COLOR:
+            case Constants.ControlProperties.CONTROL_LED_COLOR:
                 commandChangeLedColor(deviceId, value);
                 break;
-            case CONTROL_ALIAS:
+            case Constants.ControlProperties.CONTROL_ALIAS:
                 commandChangeAlias(deviceId, value);
                 break;
-            case CONTROL_PORTS_CONTROL:
+            case Constants.ControlProperties.CONTROL_PORTS_CONTROL:
                 commandChangePortsControlState(deviceId, value);
                 break;
             default:
@@ -585,12 +583,12 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         validDeviceMetaDataRetrievalPeriodTimestamp = currentTimestamp + deviceMetaDataRetrievalTimeout;
 
         JsonNode httpResponse = doPost("/graphql", Constants.GraphQLRequests.MonitoringRequests.CUSTOMERS_REQUEST, JsonNode.class);
-        ArrayNode customers = (ArrayNode) httpResponse.at(GQL_PATH_CUSTOMERS);
+        ArrayNode customers = (ArrayNode) httpResponse.at(Constants.GraphQLProperties.GQL_PATH_CUSTOMERS);
 
         if (customers != null && !customers.isEmpty()) {
             List<String> customerHandlesTmp = new ArrayList<>();
             customers.forEach(jsonNode -> {
-                customerHandlesTmp.add(jsonNode.at(GQL_PATH_HANDLE).asText());
+                customerHandlesTmp.add(jsonNode.at(Constants.GraphQLProperties.GQL_PATH_HANDLE).asText());
             });
             customerHandles.addAll(customerHandlesTmp);
             customerHandles.removeIf(handle -> !customerHandlesTmp.contains(handle));
@@ -604,7 +602,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
         for (String handle : customerHandles) {
             JsonNode customerDisplaysMeta = doPost("/graphql", String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_METADATA_REQUEST, handle), JsonNode.class);
-            List<AggregatedDevice> deviceList = aggregatedDeviceProcessor.extractDevices(customerDisplaysMeta.at(GQL_PATH_CUSTOMER_BY_HANDLE));
+            List<AggregatedDevice> deviceList = aggregatedDeviceProcessor.extractDevices(customerDisplaysMeta.at(Constants.GraphQLProperties.GQL_PATH_CUSTOMER_BY_HANDLE));
 
             if (deviceTypeFilter != null && !deviceTypeFilter.isEmpty()) {
                 deviceList.removeIf(aggregatedDevice -> !deviceTypeFilter.contains(aggregatedDevice.getProperties().get("DisplayType")));
@@ -663,9 +661,9 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 }
             }
 
-            ArrayNode devicesDetails = (ArrayNode) customerDisplaysBasic.at(GQL_PATH_DISPLAYS);
+            ArrayNode devicesDetails = (ArrayNode) customerDisplaysBasic.at(Constants.GraphQLProperties.GQL_PATH_DISPLAYS);
             for (JsonNode deviceDetails : devicesDetails) {
-                String displayId = deviceDetails.at(GQL_PATH_ID).asText();
+                String displayId = deviceDetails.at(Constants.GraphQLProperties.GQL_PATH_ID).asText();
                 AggregatedDevice aggregatedDevice = aggregatedDevices.get(displayId);
                 aggregatedDeviceProcessor.applyProperties(aggregatedDevice, deviceDetails, "WaveDevice");
 
@@ -699,25 +697,25 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         }
         Map<String, String> properties = aggregatedDevice.getProperties();
 
-        properties.put(POWER_SCHEDULE_SYNCHRONIZED, String.valueOf(powerSchedule.getIsSynced()));
+        properties.put(Constants.MonitoredProperties.POWER_SCHEDULE_SYNCHRONIZED, String.valueOf(powerSchedule.getIsSynced()));
         Schedule schedule = powerSchedule.getSchedule();
         LatestJob latestJob = powerSchedule.getLatestJob();
 
         if (schedule != null) {
-            properties.put(POWER_SCHEDULE_CREATED_DATE, String.valueOf(schedule.getCreatedAt()));
-            properties.put(POWER_SCHEDULE_DESCRIPTION, String.valueOf(schedule.getDescription()));
-            properties.put(POWER_SCHEDULE_TITLE, String.valueOf(schedule.getTitle()));
+            properties.put(Constants.MonitoredProperties.POWER_SCHEDULE_CREATED_DATE, String.valueOf(schedule.getCreatedAt()));
+            properties.put(Constants.MonitoredProperties.POWER_SCHEDULE_DESCRIPTION, String.valueOf(schedule.getDescription()));
+            properties.put(Constants.MonitoredProperties.POWER_SCHEDULE_TITLE, String.valueOf(schedule.getTitle()));
             List<TimeBlock> timeBlocks = schedule.getTimeBlocks();
             if (timeBlocks != null && !timeBlocks.isEmpty()) {
                 timeBlocks.forEach(timeBlock -> {
                     String day = timeBlock.getDay();
-                    properties.put(String.format(POWER_SCHEDULE_POWER_ON_TIME, day), timeBlock.getStart());
-                    properties.put(String.format(POWER_SCHEDULE_STANDBY_TIME, day), timeBlock.getEnd());
+                    properties.put(String.format(Constants.MonitoredProperties.POWER_SCHEDULE_POWER_ON_TIME, day), timeBlock.getStart());
+                    properties.put(String.format(Constants.MonitoredProperties.POWER_SCHEDULE_STANDBY_TIME, day), timeBlock.getEnd());
                 });
             }
         }
         if (latestJob != null) {
-            properties.put(POWER_SCHEDULE_LATEST_JOB, String.valueOf(latestJob.getCreatedAt()));
+            properties.put(Constants.MonitoredProperties.POWER_SCHEDULE_LATEST_JOB, String.valueOf(latestJob.getCreatedAt()));
         }
     }
 
@@ -734,7 +732,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         List<Alert> alerts = deviceNode.getAlerts();
         Map<String, String> properties = aggregatedDevice.getProperties();
         if (alerts == null || alerts.isEmpty()) {
-            properties.put(ALERTS_TOTAL_COUNT, "0");
+            properties.put(Constants.MonitoredProperties.ALERTS_TOTAL_COUNT, "0");
             return;
         }
         Map<String, TreeMap<Date, Alert>> alertEntriesByType = new HashMap<>();
@@ -751,12 +749,12 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         int totalAlertCount = alertTypesOccurrences.values().stream().reduce(0, Integer::sum);
         for (Map.Entry<String, TreeMap<Date, Alert>> entry : alertEntriesByType.entrySet()) {
             Alert alertEntry = entry.getValue().lastEntry().getValue();
-            properties.put(String.format(ALERTS_ALERT_MESSAGE, index), alertEntry.getMessage());
-            properties.put(String.format(ALERTS_ALERT_OCCURRENCE_COUNT, index), String.valueOf(alertTypesOccurrences.get(entry.getKey())));
-            properties.put(String.format(ALERTS_ALERT_LAST_OCCURRED, index), String.valueOf(alertEntry.getCreatedAt()));
+            properties.put(String.format(Constants.MonitoredProperties.ALERTS_ALERT_MESSAGE, index), alertEntry.getMessage());
+            properties.put(String.format(Constants.MonitoredProperties.ALERTS_ALERT_OCCURRENCE_COUNT, index), String.valueOf(alertTypesOccurrences.get(entry.getKey())));
+            properties.put(String.format(Constants.MonitoredProperties.ALERTS_ALERT_LAST_OCCURRED, index), String.valueOf(alertEntry.getCreatedAt()));
             index++;
         }
-        properties.put(ALERTS_ALERT_TOTAL_COUNT, String.valueOf(totalAlertCount));
+        properties.put(Constants.MonitoredProperties.ALERTS_ALERT_TOTAL_COUNT, String.valueOf(totalAlertCount));
     }
 
     /**
@@ -785,7 +783,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         int index = 1;
         for (String bookmark : data) {
             if (StringUtils.isNotNullOrEmpty(bookmark)) {
-                properties.put(String.format(BOOKMARKS_BOOKMARK_TITLE, index), bookmark);
+                properties.put(String.format(Constants.MonitoredProperties.BOOKMARKS_BOOKMARK_TITLE, index), bookmark);
             }
             index++;
         }
@@ -806,7 +804,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
             return;
         }
         Map<String, String> properties = aggregatedDevice.getProperties();
-        properties.put(SYSTEM_GROUPS, groups.stream().map(Group::getName).collect(Collectors.joining(";")));
+        properties.put(Constants.MonitoredProperties.SYSTEM_GROUPS, groups.stream().map(Group::getName).collect(Collectors.joining(";")));
     }
 
     /**
