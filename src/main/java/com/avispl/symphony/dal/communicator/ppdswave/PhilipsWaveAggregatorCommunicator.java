@@ -34,12 +34,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.util.CollectionUtils;
 
 import java.io.*;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
+import static com.avispl.symphony.dal.communicator.ppdswave.Constants.Utility.EMPTY_STRING;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -60,7 +62,7 @@ import static java.util.stream.Collectors.toList;
  * <li>Site</li>
  * <li>System</li>
  * <li>Video</li>
- *
+ * <p>
  * Currently supported control operations are:
  * <li>Reboot</li>
  * <li>Audio Mute</li>
@@ -167,12 +169,115 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
             }
             // Finished collecting
         }
+
         /**
          * Triggers main loop to stop
          */
         public void stop() {
             inProgress = false;
         }
+    }
+
+    /**
+     * Retrieves {@link #deviceMetaDataRetrievalTimeout}
+     *
+     * @return value of {@link #deviceMetaDataRetrievalTimeout}
+     */
+    public long getDeviceMetaDataRetrievalTimeout() {
+        return deviceMetaDataRetrievalTimeout;
+    }
+
+    /**
+     * Sets {@link #deviceMetaDataRetrievalTimeout} value
+     *
+     * @param deviceMetaDataRetrievalTimeout new value of {@link #deviceMetaDataRetrievalTimeout}
+     */
+    public void setDeviceMetaDataRetrievalTimeout(long deviceMetaDataRetrievalTimeout) {
+        this.deviceMetaDataRetrievalTimeout = Math.max(defaultMetaDataTimeout, deviceMetaDataRetrievalTimeout);
+    }
+
+    /**
+     * Retrieves {@link #deviceDetailsRetrievalTimeout}
+     *
+     * @return value of {@link #deviceDetailsRetrievalTimeout}
+     */
+    public long getDeviceDetailsRetrievalTimeout() {
+        return deviceDetailsRetrievalTimeout;
+    }
+
+    /**
+     * Sets {@link #deviceDetailsRetrievalTimeout} value
+     *
+     * @param deviceDetailsRetrievalTimeout new value of {@link #deviceDetailsRetrievalTimeout}
+     */
+    public void setDeviceDetailsRetrievalTimeout(long deviceDetailsRetrievalTimeout) {
+        this.deviceDetailsRetrievalTimeout = Math.max(defaultMetaDataTimeout, deviceDetailsRetrievalTimeout);
+    }
+
+    /**
+     * Retrieves {@link #customerHandleFilter}
+     *
+     * @return value of {@link #customerHandleFilter}
+     */
+    public String getCustomerHandleFilter() {
+        return String.join(",", customerHandleFilter);
+    }
+
+    /**
+     * Sets {@link #customerHandleFilter} value
+     *
+     * @param customerHandleFilter new value of {@link #customerHandleFilter}
+     */
+    public void setCustomerHandleFilter(String customerHandleFilter) {
+        if (customerHandleFilter == null) {
+            this.customerHandleFilter = null;
+            return;
+        }
+        this.customerHandleFilter = Arrays.stream(customerHandleFilter.split(",")).map(String::trim).collect(toList());
+    }
+
+    /**
+     * Retrieves {@link #deviceTypeFilter}
+     *
+     * @return value of {@link #deviceTypeFilter}
+     */
+    public String getDeviceTypeFilter() {
+        return String.join(",", deviceTypeFilter);
+    }
+
+    /**
+     * Sets {@link #deviceTypeFilter} value
+     *
+     * @param deviceTypeFilter new value of {@link #deviceTypeFilter}
+     */
+    public void setDeviceTypeFilter(String deviceTypeFilter) {
+        if (deviceTypeFilter == null) {
+            this.deviceTypeFilter = null;
+            return;
+        }
+        this.deviceTypeFilter = Arrays.stream(deviceTypeFilter.split(",")).map(String::trim).collect(toList());
+    }
+
+    /**
+     * Retrieves {@link #displayPropertyGroups}
+     *
+     * @return value of {@link #displayPropertyGroups}
+     */
+    public String getDisplayPropertyGroups() {
+        return String.join(",", displayPropertyGroups);
+    }
+
+    /**
+     * Sets {@link #displayPropertyGroups} value
+     *
+     * @param displayPropertyGroups new value of {@link #displayPropertyGroups}
+     */
+    public void setDisplayPropertyGroups(String displayPropertyGroups) {
+        if (displayPropertyGroups == null) {
+            this.displayPropertyGroups = null;
+            return;
+        }
+        this.displayPropertyGroups = Arrays.stream(displayPropertyGroups.split(",")).map(String::trim).map(String::toLowerCase).collect(toList());
     }
 
     /**
@@ -197,7 +302,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
     /**
      * Saved customer handles to use for devices retrieval
-     * */
+     */
     Set<String> customerHandles = new HashSet<>();
 
     /**
@@ -213,18 +318,23 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
     /**
      * Device details retrieval timeout. The device details are updated once during this time period.
-     * */
+     */
     private long deviceDetailsRetrievalTimeout = 60 * 1000 * 1;
 
     /**
      * Customer handle filter. The devices are only retrieved for the handle specified.
-     * */
-    private List<String> customerHandleFilter;
+     */
+    private List<String> customerHandleFilter = new ArrayList<>();
 
     /**
      * Device type filter. The devices are only retrieved/updated if type is matched.
+     */
+    private List<String> deviceTypeFilter = new ArrayList<>();
+
+    /**
+     * List of propery groups to be displayed. Current supported values: screenshot
      * */
-    private List<String> deviceTypeFilter;
+    private List<String> displayPropertyGroups = new ArrayList<>();
 
     /**
      * Aggregator inactivity timeout. If the {@link PhilipsWaveAggregatorCommunicator#retrieveMultipleStatistics()}  method is not
@@ -286,7 +396,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
     /**
      * Aggregated device processor, for automatic response json processing, based on the model-mapping.yml configuration
-     * */
+     */
     AggregatedDeviceProcessor aggregatedDeviceProcessor;
 
     public PhilipsWaveAggregatorCommunicator() {
@@ -306,7 +416,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         executorService.submit(deviceDataLoader = new PPDSDeviceDataLoader());
         validDeviceMetaDataRetrievalPeriodTimestamp = System.currentTimeMillis();
         validDeviceDetailsRetrievalPeriodTimestamp = System.currentTimeMillis();
-        //serviceRunning = true;
+        this.setBaseUri("/graphql");
         super.internalInit();
     }
 
@@ -441,6 +551,10 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 .collect(toList());
     }
 
+    /**
+     * Authentication is performed using predefined access token, which is configured
+     * as a device monitoring interface password, so no functionality is required in this method
+     * */
     @Override
     protected void authenticate() throws Exception {
     }
@@ -474,94 +588,16 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                     }
                     return this.getPingTimeout();
                 }
-            } catch (SocketTimeoutException tex) {
-                if (this.logger.isDebugEnabled()) {
-                    this.logger.debug(String.format("PING TIMEOUT: Connection to %s did not succeed within the timeout period of %sms", this.getHost(), this.getPingTimeout()));
+            }  catch (SocketTimeoutException | ConnectException tex) {
+                throw new RuntimeException("Socket connection timed out", tex);
+            } catch (Exception e) {
+                if (this.logger.isWarnEnabled()) {
+                    this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
                 }
                 return this.getPingTimeout();
             }
         }
         return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
-    }
-
-    /**
-     * Retrieves {@link #deviceMetaDataRetrievalTimeout}
-     *
-     * @return value of {@link #deviceMetaDataRetrievalTimeout}
-     */
-    public long getDeviceMetaDataRetrievalTimeout() {
-        return deviceMetaDataRetrievalTimeout;
-    }
-
-    /**
-     * Sets {@link #deviceMetaDataRetrievalTimeout} value
-     *
-     * @param deviceMetaDataRetrievalTimeout new value of {@link #deviceMetaDataRetrievalTimeout}
-     */
-    public void setDeviceMetaDataRetrievalTimeout(long deviceMetaDataRetrievalTimeout) {
-        this.deviceMetaDataRetrievalTimeout = Math.max(defaultMetaDataTimeout, deviceMetaDataRetrievalTimeout);
-    }
-
-    /**
-     * Retrieves {@link #deviceDetailsRetrievalTimeout}
-     *
-     * @return value of {@link #deviceDetailsRetrievalTimeout}
-     */
-    public long getDeviceDetailsRetrievalTimeout() {
-        return deviceDetailsRetrievalTimeout;
-    }
-
-    /**
-     * Sets {@link #deviceDetailsRetrievalTimeout} value
-     *
-     * @param deviceDetailsRetrievalTimeout new value of {@link #deviceDetailsRetrievalTimeout}
-     */
-    public void setDeviceDetailsRetrievalTimeout(long deviceDetailsRetrievalTimeout) {
-        this.deviceDetailsRetrievalTimeout = Math.max(defaultMetaDataTimeout, deviceDetailsRetrievalTimeout);
-    }
-
-    /**
-     * Retrieves {@link #customerHandleFilter}
-     *
-     * @return value of {@link #customerHandleFilter}
-     */
-    public String getCustomerHandleFilter() {
-        return String.join(",", customerHandleFilter);
-    }
-
-    /**
-     * Sets {@link #customerHandleFilter} value
-     *
-     * @param customerHandleFilter new value of {@link #customerHandleFilter}
-     */
-    public void setCustomerHandleFilter(String customerHandleFilter) {
-        if (customerHandleFilter == null) {
-            this.customerHandleFilter = null;
-            return;
-        }
-        this.customerHandleFilter = Arrays.stream(customerHandleFilter.split(",")).map(String::trim).collect(toList());
-    }
-
-    /**
-     * Retrieves {@link #deviceTypeFilter}
-     *
-     * @return value of {@link #deviceTypeFilter}
-     */
-    public String getDeviceTypeFilter() {
-        return String.join(",", deviceTypeFilter);
-    }
-
-    /**
-     * Sets {@link #deviceTypeFilter} value
-     *
-     * @param deviceTypeFilter new value of {@link #deviceTypeFilter}
-     */
-    public void setDeviceTypeFilter(String deviceTypeFilter) {
-        if (deviceTypeFilter == null) {
-            this.deviceTypeFilter = null;
-            return;
-        }
-        this.deviceTypeFilter = Arrays.stream(deviceTypeFilter.split(",")).map(String::trim).collect(toList());
     }
 
     /**
@@ -582,7 +618,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         }
         validDeviceMetaDataRetrievalPeriodTimestamp = currentTimestamp + deviceMetaDataRetrievalTimeout;
 
-        JsonNode httpResponse = doPost("/graphql", Constants.GraphQLRequests.MonitoringRequests.CUSTOMERS_REQUEST, JsonNode.class);
+        JsonNode httpResponse = doPost(EMPTY_STRING, Constants.GraphQLRequests.MonitoringRequests.CUSTOMERS_REQUEST, JsonNode.class);
         ArrayNode customers = (ArrayNode) httpResponse.at(Constants.GraphQLProperties.GQL_PATH_CUSTOMERS);
 
         if (customers != null && !customers.isEmpty()) {
@@ -601,7 +637,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         }
 
         for (String handle : customerHandles) {
-            JsonNode customerDisplaysMeta = doPost("/graphql", String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_METADATA_REQUEST, handle), JsonNode.class);
+            JsonNode customerDisplaysMeta = doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_METADATA_REQUEST, handle), JsonNode.class);
             List<AggregatedDevice> deviceList = aggregatedDeviceProcessor.extractDevices(customerDisplaysMeta.at(Constants.GraphQLProperties.GQL_PATH_CUSTOMER_BY_HANDLE));
 
             if (deviceTypeFilter != null && !deviceTypeFilter.isEmpty()) {
@@ -642,8 +678,8 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
             logger.debug("Process devices details, devices to update: " + aggregatedDevices.keySet());
         }
         for (String handle : customerHandles) {
-            JsonNode customerDisplaysBasic = doPost("/graphql", String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_DETAILS_REQUEST_BASIC, handle), JsonNode.class);
-            ResponseWrapper customerDisplaysDetailed = doPost("/graphql", String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_DETAILS_REQUEST_DETAILED, handle), ResponseWrapper.class);
+            JsonNode customerDisplaysBasic = doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_DETAILS_REQUEST_BASIC, handle), JsonNode.class);
+            ResponseWrapper customerDisplaysDetailed = doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_DETAILS_REQUEST_DETAILED, handle), ResponseWrapper.class);
             Map<String, Display> displayDetails = new HashMap<>();
             if (customerDisplaysDetailed != null) {
                 Data displaysWrapper = customerDisplaysDetailed.getData();
@@ -665,7 +701,8 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
             for (JsonNode deviceDetails : devicesDetails) {
                 String displayId = deviceDetails.at(Constants.GraphQLProperties.GQL_PATH_ID).asText();
                 AggregatedDevice aggregatedDevice = aggregatedDevices.get(displayId);
-                aggregatedDeviceProcessor.applyProperties(aggregatedDevice, deviceDetails, "WaveDevice");
+                Map<String, String> deviceProperties = aggregatedDevice.getProperties();
+                aggregatedDeviceProcessor.applyProperties(deviceProperties, deviceDetails, "WaveDevice");
 
                 Display display = displayDetails.get(displayId);
                 if (display != null) {
@@ -675,6 +712,10 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
                     processDeviceAppSubscriptions(aggregatedDevice, display);
                     processDeviceGroups(aggregatedDevice, display);
+
+                    if (displayPropertyGroups.contains("screenshot")) {
+                        aggregatedDeviceProcessor.applyProperties(deviceProperties, deviceDetails, "ScreenshotInfo");
+                    }
                 }
             }
         }
@@ -685,7 +726,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * synchronization details, schedule name etc.
      *
      * @param aggregatedDevice to process scheduling data for
-     * @param deviceNode object containing all the data necessary
+     * @param deviceNode       object containing all the data necessary
      */
     private void processDevicePowerSchedule(AggregatedDevice aggregatedDevice, Display deviceNode) {
         if (logger.isDebugEnabled()) {
@@ -723,7 +764,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Process device alert details. Includes alert name, last occurrence, total occurrences for each alert type, etc.
      *
      * @param aggregatedDevice to process alerts data for
-     * @param deviceNode object containing all the data necessary
+     * @param deviceNode       object containing all the data necessary
      */
     private void processDeviceAlerts(AggregatedDevice aggregatedDevice, Display deviceNode) {
         if (logger.isDebugEnabled()) {
@@ -731,8 +772,9 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         }
         List<Alert> alerts = deviceNode.getAlerts();
         Map<String, String> properties = aggregatedDevice.getProperties();
+        Map<String, String> dynamicProperties = aggregatedDevice.getDynamicStatistics();
         if (alerts == null || alerts.isEmpty()) {
-            properties.put(Constants.MonitoredProperties.ALERTS_TOTAL_COUNT, "0");
+            dynamicProperties.put(Constants.MonitoredProperties.ALERTS_TOTAL_COUNT, "0");
             return;
         }
         Map<String, TreeMap<Date, Alert>> alertEntriesByType = new HashMap<>();
@@ -754,14 +796,14 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
             properties.put(String.format(Constants.MonitoredProperties.ALERTS_ALERT_LAST_OCCURRED, index), String.valueOf(alertEntry.getCreatedAt()));
             index++;
         }
-        properties.put(Constants.MonitoredProperties.ALERTS_ALERT_TOTAL_COUNT, String.valueOf(totalAlertCount));
+        dynamicProperties.put(Constants.MonitoredProperties.ALERTS_ALERT_TOTAL_COUNT, String.valueOf(totalAlertCount));
     }
 
     /**
      * Process device bookmark details.
      *
      * @param aggregatedDevice to process bookmarks data for
-     * @param deviceNode object containing all the data necessary
+     * @param deviceNode       object containing all the data necessary
      */
     private void processDeviceBookmarks(AggregatedDevice aggregatedDevice, Display deviceNode) {
         if (logger.isDebugEnabled()) {
@@ -793,7 +835,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Process device groups details.
      *
      * @param aggregatedDevice to process groups data for
-     * @param deviceNode object containing all the data necessary
+     * @param deviceNode       object containing all the data necessary
      */
     private void processDeviceGroups(AggregatedDevice aggregatedDevice, Display deviceNode) {
         if (logger.isDebugEnabled()) {
@@ -811,7 +853,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Process device app subscriptions details.
      *
      * @param aggregatedDevice to process app subscriptions data for
-     * @param deviceNode object containing all the data necessary
+     * @param deviceNode       object containing all the data necessary
      */
     private void processDeviceAppSubscriptions(AggregatedDevice aggregatedDevice, Display deviceNode) {
         if (logger.isDebugEnabled()) {
@@ -825,68 +867,68 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param displayId to execute the command for
      */
     private void commandReboot(String displayId) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.REBOOT, displayId), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.REBOOT, displayId), JsonNode.class);
     }
 
     /**
      * Audio mute/unmute status change command
      *
-     * @param displayId to execute command for
+     * @param displayId  to execute command for
      * @param muteStatus new status
      */
     private void commandChangeMuteStatus(String displayId, String muteStatus) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.MUTE, displayId, muteStatus), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.MUTE, displayId, muteStatus), JsonNode.class);
     }
 
     /**
      * Volume change command
      *
-     * @param displayId to execute command for
+     * @param displayId   to execute command for
      * @param volumeLevel new volume level
      */
     private void commandChangeVolume(String displayId, String volumeLevel) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.VOLUME, displayId, Float.parseFloat(volumeLevel)), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.VOLUME, displayId, Float.parseFloat(volumeLevel)), JsonNode.class);
     }
 
     /**
      * Screen brightness change
      *
-     * @param displayId to execute command for
+     * @param displayId       to execute command for
      * @param brightnessLevel new brightness level
      */
     private void commandChangeBrightness(String displayId, String brightnessLevel) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.BRIGHTNESS, displayId, Float.parseFloat(brightnessLevel)), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.BRIGHTNESS, displayId, Float.parseFloat(brightnessLevel)), JsonNode.class);
     }
 
     /**
      * Power state change command, ON/STANDBY
      *
-     * @param displayId to execute command for
+     * @param displayId  to execute command for
      * @param powerState new power state
      */
     private void commandChangePowerState(String displayId, String powerState) throws Exception {
         String powerStateValue = "1".equals(powerState) ? "ON" : "STANDBY";
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.POWER, displayId, powerStateValue), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.POWER, displayId, powerStateValue), JsonNode.class);
     }
 
     /**
      * Screen orientation change, LANDSCAPE/PORTRAIT
      *
-     * @param displayId to execute command for
+     * @param displayId        to execute command for
      * @param orientationState new orientation state
      */
     private void commandChangeOrientation(String displayId, String orientationState) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.ORIENTATION, displayId, orientationState), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ORIENTATION, displayId, orientationState), JsonNode.class);
     }
 
     /**
      * Video input source change
      *
-     * @param displayId to execute command for
+     * @param displayId  to execute command for
      * @param inputState new input state
      */
     private void commandChangeInput(String displayId, String inputState) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.INPUT, displayId, inputState), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.INPUT, displayId, inputState), JsonNode.class);
     }
 
     /**
@@ -895,57 +937,57 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param displayId to execute command for
      */
     private void commandTakeScreenshot(String displayId) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.SCREENSHOT, displayId), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.SCREENSHOT, displayId), JsonNode.class);
     }
 
     /**
      * Change IR control mode command, LOCKED/POWER_ONLY/UNLOCKED/VOLUME_ONLY
      *
      * @param displayId to execute command for
-     * @param irMode new IR control mode
+     * @param irMode    new IR control mode
      */
     private void commandChangeIRMode(String displayId, String irMode) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.IR_MODE, displayId, irMode), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.IR_MODE, displayId, irMode), JsonNode.class);
     }
 
     /**
      * Change keyboard control mode command, LOCKED/POWER_ONLY/UNLOCKED/VOLUME_ONLY
      *
-     * @param displayId to execute command for
+     * @param displayId     to execute command for
      * @param keyboardState new keyboard control mode
      */
     private void commandChangeKeyboardMode(String displayId, String keyboardState) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.KEYBOARD_MODE, displayId, keyboardState), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.KEYBOARD_MODE, displayId, keyboardState), JsonNode.class);
     }
 
     /**
      * LED Strip color change command
      *
      * @param displayId to execute command for
-     * @param ledColor new LED Strip color
+     * @param ledColor  new LED Strip color
      */
     private void commandChangeLedColor(String displayId, String ledColor) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.LED_COLOR, displayId, ledColor), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.LED_COLOR, displayId, ledColor), JsonNode.class);
     }
 
     /**
      * Ports control state change command, LOCKED/UNLOCKED
      *
-     * @param displayId to execute command for
+     * @param displayId    to execute command for
      * @param controlState new ports control state
      */
     private void commandChangePortsControlState(String displayId, String controlState) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.PORTS_CONTROL, displayId, controlState), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.PORTS_CONTROL, displayId, controlState), JsonNode.class);
     }
 
     /**
      * Change display alias command
      *
-     * @param displayId to execute command for
+     * @param displayId  to execute command for
      * @param aliasValue new display alias
      */
     private void commandChangeAlias(String displayId, String aliasValue) throws Exception {
-        doPost("/graphql", String.format(Constants.GraphQLRequests.ControlRequest.ALIAS, displayId, aliasValue), JsonNode.class);
+        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ALIAS, displayId, aliasValue), JsonNode.class);
     }
 
     /**
@@ -954,16 +996,19 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * but before the next devices details polling cycle was addressed.
      *
      * @param deviceId to update control value for
-     * @param name of the control property
-     * @param value to set to the control property
+     * @param name     of the control property
+     * @param value    to set to the control property
      */
     private void updateLocalControlValue(String deviceId, String name, String value) {
         Optional<AggregatedDevice> device = aggregatedDevices.values().stream().filter(aggregatedDevice ->
                 deviceId.equals(aggregatedDevice.getDeviceId())).findFirst();
         device.flatMap(aggregatedDevice ->
                 aggregatedDevice.getControllableProperties().stream().filter(advancedControllableProperty ->
-                        name.equals(advancedControllableProperty.getName())).findFirst()).ifPresent(advancedControllableProperty ->
-                advancedControllableProperty.setValue(value));
+                        name.equals(advancedControllableProperty.getName())).findFirst()).ifPresent(advancedControllableProperty -> {
+                    advancedControllableProperty.setValue(value);
+                    advancedControllableProperty.setTimestamp(new Date());
+                }
+        );
         device.ifPresent(aggregatedDevice -> aggregatedDevice.getProperties().put(name, value));
     }
 

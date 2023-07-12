@@ -60,10 +60,6 @@ models:
         # Presence info
         #Presence#Connected: at("/presence/connected")
         PresenceLastUpdated: at("/presence/timestamp")
-        # Screenshot info
-        Screenshot#CreatedAt: at("/screenshot/createdAt")
-        Screenshot#URL: at("/screenshot/url")
-        Screenshot#Create: "Create"
         # Site info
         Site#Address: at("/site/address")
         Site#ID: at("/site/id")
@@ -126,10 +122,10 @@ models:
           value: at("/power/reported")?.asText().equals("ON")
           labelOn: "On"
           labelOff: "Standby"
-        Screenshot#Create:
+        Screenshot#Capture:
           type: Button
-          label: "Create"
-          labelPressed: "Creating"
+          label: "Capture"
+          labelPressed: "Capturing"
           gracePeriod: 0
         Power#Reboot:
           type: Button
@@ -159,7 +155,13 @@ models:
         System#Alias:
           type: Text
           value: at("/alias")
-
-
+  - model:
+      name: ScreenshotInfo
+      filter: get("serialNumber") == null && get("displayType") != null
+      properties:
+        # Screenshot info
+        Screenshot#CreatedAt: at("/screenshot/createdAt")
+        Screenshot#URL: at("/screenshot/url")
+        Screenshot#Capture: "Capture"
 
 

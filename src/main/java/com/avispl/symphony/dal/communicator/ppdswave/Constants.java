@@ -27,6 +27,10 @@ public interface Constants {
         String BOOKMARKS_BOOKMARK_TITLE = "Bookmarks#Bookmark_%02d";
         String SYSTEM_GROUPS = "System#Groups";
     }
+    /** Utility constants */
+    interface Utility {
+        String EMPTY_STRING = "";
+    }
     /** Control properties */
     interface ControlProperties {
         String CONTROL_AUDIO_VOLUME = "Audio#Volume";
