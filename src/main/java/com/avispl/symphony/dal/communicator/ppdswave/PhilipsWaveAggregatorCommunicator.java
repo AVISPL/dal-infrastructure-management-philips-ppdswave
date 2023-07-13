@@ -702,7 +702,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 String displayId = deviceDetails.at(Constants.GraphQLProperties.GQL_PATH_ID).asText();
                 AggregatedDevice aggregatedDevice = aggregatedDevices.get(displayId);
                 Map<String, String> deviceProperties = aggregatedDevice.getProperties();
-                aggregatedDeviceProcessor.applyProperties(deviceProperties, deviceDetails, "WaveDevice");
+                aggregatedDeviceProcessor.applyProperties(aggregatedDevice, deviceDetails, "WaveDevice");
 
                 Display display = displayDetails.get(displayId);
                 if (display != null) {
