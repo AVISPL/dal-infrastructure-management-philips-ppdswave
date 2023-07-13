@@ -26,6 +26,7 @@ import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.Schedule;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.TimeBlock;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.CustomerByHandle;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.Data;
+import com.avispl.symphony.dal.communicator.ppdswave.error.PPDSWaveCommandExecutionException;
 import com.avispl.symphony.dal.util.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -867,7 +868,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param displayId to execute the command for
      */
     private void commandReboot(String displayId) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.REBOOT, displayId), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.REBOOT, displayId), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException("Unable to execute Reboot command for the device with id " + displayId, ex);
+        }
     }
 
     /**
@@ -877,7 +882,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param muteStatus new status
      */
     private void commandChangeMuteStatus(String displayId, String muteStatus) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.MUTE, displayId, muteStatus), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.MUTE, displayId, muteStatus), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Mute status change command for the device with id %s with value %s", displayId, muteStatus), ex);
+        }
     }
 
     /**
@@ -887,7 +896,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param volumeLevel new volume level
      */
     private void commandChangeVolume(String displayId, String volumeLevel) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.VOLUME, displayId, Float.parseFloat(volumeLevel)), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.VOLUME, displayId, Float.parseFloat(volumeLevel)), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Volume change command for the device with id %s with value %s", displayId, volumeLevel), ex);
+        }
     }
 
     /**
@@ -897,7 +910,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param brightnessLevel new brightness level
      */
     private void commandChangeBrightness(String displayId, String brightnessLevel) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.BRIGHTNESS, displayId, Float.parseFloat(brightnessLevel)), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.BRIGHTNESS, displayId, Float.parseFloat(brightnessLevel)), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Brightness change command for the device with id %s with value %s", displayId, brightnessLevel), ex);
+        }
     }
 
     /**
@@ -908,7 +925,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangePowerState(String displayId, String powerState) throws Exception {
         String powerStateValue = "1".equals(powerState) ? "ON" : "STANDBY";
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.POWER, displayId, powerStateValue), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.POWER, displayId, powerStateValue), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Power state change command for the device with id %s with value %s", displayId, powerState), ex);
+        }
     }
 
     /**
@@ -918,7 +939,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param orientationState new orientation state
      */
     private void commandChangeOrientation(String displayId, String orientationState) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ORIENTATION, displayId, orientationState), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ORIENTATION, displayId, orientationState), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Orientation state change command for the device with id %s with value %s", displayId, orientationState), ex);
+        }
     }
 
     /**
@@ -928,7 +953,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param inputState new input state
      */
     private void commandChangeInput(String displayId, String inputState) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.INPUT, displayId, inputState), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.INPUT, displayId, inputState), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Input change command for the device with id %s with value %s", displayId, inputState), ex);
+        }
     }
 
     /**
@@ -937,7 +966,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param displayId to execute command for
      */
     private void commandTakeScreenshot(String displayId) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.SCREENSHOT, displayId), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.SCREENSHOT, displayId), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException("Unable to execute Screenshot capture change command for the device with id " + displayId, ex);
+        }
     }
 
     /**
@@ -947,7 +980,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param irMode    new IR control mode
      */
     private void commandChangeIRMode(String displayId, String irMode) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.IR_MODE, displayId, irMode), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.IR_MODE, displayId, irMode), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute IR Mode change command for the device with id %s with value %s", displayId, irMode), ex);
+        }
     }
 
     /**
@@ -957,7 +994,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param keyboardState new keyboard control mode
      */
     private void commandChangeKeyboardMode(String displayId, String keyboardState) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.KEYBOARD_MODE, displayId, keyboardState), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.KEYBOARD_MODE, displayId, keyboardState), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Keyboard control mode change command for the device with id %s with value %s", displayId, keyboardState), ex);
+        }
     }
 
     /**
@@ -967,7 +1008,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param ledColor  new LED Strip color
      */
     private void commandChangeLedColor(String displayId, String ledColor) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.LED_COLOR, displayId, ledColor), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.LED_COLOR, displayId, ledColor), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute LED Strip Color change command for the device with id %s with value %s", displayId, ledColor), ex);
+        }
     }
 
     /**
@@ -977,7 +1022,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param controlState new ports control state
      */
     private void commandChangePortsControlState(String displayId, String controlState) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.PORTS_CONTROL, displayId, controlState), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.PORTS_CONTROL, displayId, controlState), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Ports control state change command for the device with id %s with value %s", displayId, controlState), ex);
+        }
     }
 
     /**
@@ -987,7 +1036,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * @param aliasValue new display alias
      */
     private void commandChangeAlias(String displayId, String aliasValue) throws Exception {
-        doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ALIAS, displayId, aliasValue), JsonNode.class);
+        try {
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ALIAS, displayId, aliasValue), JsonNode.class);
+        } catch (Exception ex) {
+            throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Alias change command for the device with id %s with value %s", displayId, aliasValue), ex);
+        }
     }
 
     /**
