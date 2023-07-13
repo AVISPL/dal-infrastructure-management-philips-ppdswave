@@ -866,6 +866,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Reboot command execution
      *
      * @param displayId to execute the command for
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandReboot(String displayId) throws Exception {
         try {
@@ -880,6 +881,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId  to execute command for
      * @param muteStatus new status
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangeMuteStatus(String displayId, String muteStatus) throws Exception {
         try {
@@ -894,6 +896,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId   to execute command for
      * @param volumeLevel new volume level
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangeVolume(String displayId, String volumeLevel) throws Exception {
         try {
@@ -908,6 +911,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId       to execute command for
      * @param brightnessLevel new brightness level
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangeBrightness(String displayId, String brightnessLevel) throws Exception {
         try {
@@ -922,6 +926,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId  to execute command for
      * @param powerState new power state
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangePowerState(String displayId, String powerState) throws Exception {
         String powerStateValue = "1".equals(powerState) ? "ON" : "STANDBY";
@@ -937,6 +942,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId        to execute command for
      * @param orientationState new orientation state
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangeOrientation(String displayId, String orientationState) throws Exception {
         try {
@@ -951,6 +957,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId  to execute command for
      * @param inputState new input state
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangeInput(String displayId, String inputState) throws Exception {
         try {
@@ -964,6 +971,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Take screenshot command
      *
      * @param displayId to execute command for
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandTakeScreenshot(String displayId) throws Exception {
         try {
@@ -978,6 +986,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId to execute command for
      * @param irMode    new IR control mode
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangeIRMode(String displayId, String irMode) throws Exception {
         try {
@@ -992,6 +1001,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId     to execute command for
      * @param keyboardState new keyboard control mode
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangeKeyboardMode(String displayId, String keyboardState) throws Exception {
         try {
@@ -1006,6 +1016,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId to execute command for
      * @param ledColor  new LED Strip color
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangeLedColor(String displayId, String ledColor) throws Exception {
         try {
@@ -1020,6 +1031,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId    to execute command for
      * @param controlState new ports control state
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangePortsControlState(String displayId, String controlState) throws Exception {
         try {
@@ -1034,6 +1046,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      *
      * @param displayId  to execute command for
      * @param aliasValue new display alias
+     * @throws PPDSWaveCommandExecutionException if there's an error during command execution
      */
     private void commandChangeAlias(String displayId, String aliasValue) throws Exception {
         try {
