@@ -418,6 +418,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         validDeviceMetaDataRetrievalPeriodTimestamp = System.currentTimeMillis();
         validDeviceDetailsRetrievalPeriodTimestamp = System.currentTimeMillis();
         this.setBaseUri("/graphql");
+        this.setTrustAllCertificates(true);
         super.internalInit();
     }
 
