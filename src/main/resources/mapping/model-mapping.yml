@@ -11,7 +11,7 @@ models:
         deviceId: at("/id")?.asText()
         deviceName: at("/alias")?.asText()
         deviceMake: "Philips"
-        deviceModel: "Unknown"
+        deviceModel: at("/commercialTypeNumber")
         deviceOnline: at("/presence/connected")?.asBoolean()
       properties:
         DisplayType: at("/displayType")
