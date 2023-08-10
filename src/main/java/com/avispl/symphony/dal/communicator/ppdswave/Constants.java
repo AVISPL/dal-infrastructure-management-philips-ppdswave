@@ -30,6 +30,7 @@ public interface Constants {
     /** Utility constants */
     interface Utility {
         String EMPTY_STRING = "";
+        String EMPTY = "Empty";
     }
     /** Control properties */
     interface ControlProperties {
@@ -46,6 +47,7 @@ public interface Constants {
         String CONTROL_LED_COLOR = "System#LEDStripColor";
         String CONTROL_ALIAS = "System#Alias";
         String CONTROL_PORTS_CONTROL = "System#PortsControl";
+        String INPUT_SOURCE = "Video#InputSource";
     }
     /** GraphQL path */
     interface GraphQLProperties {
@@ -67,8 +69,8 @@ public interface Constants {
         interface MonitoringRequests {
             String CUSTOMERS_REQUEST = "{\"operationName\": null,\"variables\":{},\"query\":\"{organization {customers {id\\nname\\nhandle}}}\"}";
             String DISPLAYS_METADATA_REQUEST = "{\"operationName\": null,\"variables\":{},\"query\":\"{customerByHandle(handle:\\\"%s\\\"){displays{id\\nalias\\ndisplayType\\nserialNumber\\ncommercialTypeNumber\\npresence{\\nconnected}}}}\"}";
-            String DISPLAYS_DETAILS_REQUEST_BASIC = "{\"operationName\": null,\"variables\":{},\"query\":\"{customerByHandle(handle:\\\"%s\\\"){displays{id\\nalias\\ndisplayType\\nserialNumber\\nagentVersion\\ncommercialTypeNumber\\nagentReleaseChannel{reported}agentVersion\\nbrightness{reported}commercialTypeNumber\\ninputSource{available\\ncurrent{reported{source}}}customer{avatarUrl\\nhandle\\nid\\nname\\n}site{address\\nname}displayType\\nfirmware{android{availableUpdates\\nlatestJob{createdAt\\nplannedAt\\ntargetVersion\\nid}version}scaler{version}}groups{id\\nname}hasEmptyShadow\\nhasSensitiveData\\ninfraRedControl{reported}keyboardControl{reported}ledStripColor{reported}networkInformation{ethernetMacAddress\\nlocalIPAddress\\nnetworkType\\nwifiMacAddress}networkInterfaces{active\\nip\\nmac\\nname\\nssid}orientation{reported}platform{name\\nversion}portsControl{reported}power{reported\\nreportedAt}presence{connected\\ntimestamp}reboot{latestJob{createdAt\\nid\\nplannedAt}}recommendedSettings{reported{recommended\\nwarnings{code\\ndescription\\nseverity\\n}}}screenshot{createdAt\\nurl}serialNumber\\nsignalDetection{reported}timeZone{reported}volume{isMuted{reported}level{reported}limits{max{reported}min{reported}}}power{reported\\nreportedAt}}}}\"}";
-            String DISPLAYS_DETAILS_REQUEST_DETAILED = "{\"operationName\": null,\"variables\":{},\"query\":\"{customerByHandle(handle:\\\"%s\\\"){displays{id\\ndisplayType\\nalerts{createdAt\\nid\\nmessage}appSubscriptions{appInstallation{applicationId\\nid}createdAt\\niconUrl\\nid\\nname\\nupdatedAt\\nusage{current\\nmax}}bookmarks{all{reported}}groups{id\\nname}playlist{current{description\\nid\\nisOutOfSync\\nisTampered\\nsize\\ntitle}sync{description\\nid\\njobId\\nsize\\ntitle}}powerSchedule{isSynced\\nlatestJob{createdAt\\nid\\nscheduleId}schedule{createdAt\\ndescription\\nid\\ntimeBlocks{day\\nend\\nstart}title}}}}}\"}";
+            String DISPLAYS_DETAILS_REQUEST_BASIC = "{\"operationName\": null,\"variables\":{},\"query\":\"{customerByHandle(handle:\\\"%s\\\"){displays{id\\nalias\\ndisplayType\\nserialNumber\\nagentVersion\\ncommercialTypeNumber\\nagentReleaseChannel{reported}agentVersion\\nbrightness{reported}commercialTypeNumber\\ncustomer{avatarUrl\\nhandle\\nid\\nname\\n}site{address\\nname}displayType\\nfirmware{android{availableUpdates\\nlatestJob{createdAt\\nplannedAt\\ntargetVersion\\nid}version}scaler{version}}groups{id\\nname}hasEmptyShadow\\nhasSensitiveData\\ninfraRedControl{reported}keyboardControl{reported}ledStripColor{reported}networkInformation{ethernetMacAddress\\nlocalIPAddress\\nnetworkType\\nwifiMacAddress}networkInterfaces{active\\nip\\nmac\\nname\\nssid}orientation{reported}platform{name\\nversion}portsControl{reported}power{reported\\nreportedAt}presence{connected\\ntimestamp}reboot{latestJob{createdAt\\nid\\nplannedAt}}recommendedSettings{reported{recommended\\nwarnings{code\\ndescription\\nseverity\\n}}}screenshot{createdAt\\nurl}serialNumber\\nsignalDetection{reported}timeZone{reported}volume{isMuted{reported}level{reported}limits{max{reported}min{reported}}}power{reported\\nreportedAt}}}}\"}";
+            String DISPLAYS_DETAILS_REQUEST_DETAILED = "{\"operationName\": null,\"variables\":{},\"query\":\"{customerByHandle(handle:\\\"%s\\\"){displays{id\\ndisplayType\\nalerts{createdAt\\nid\\nmessage}\\ncontentSource{available{...on InputContentSource{source}}current{reported{...on InputContentSource{source}}}}\\nappSubscriptions{appInstallation{applicationId\\nid}createdAt\\niconUrl\\nid\\nname\\nupdatedAt\\nusage{current\\nmax}}bookmarks{all{reported}}groups{id\\nname}playlist{current{description\\nid\\nisOutOfSync\\nisTampered\\nsize\\ntitle}sync{description\\nid\\njobId\\nsize\\ntitle}}powerSchedule{isSynced\\nlatestJob{createdAt\\nid\\nscheduleId}schedule{createdAt\\ndescription\\nid\\ntimeBlocks{day\\nend\\nstart}title}}}}}\"}";
         }
         /** Control requests */
         interface ControlRequest {

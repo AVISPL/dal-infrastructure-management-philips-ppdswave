@@ -4,10 +4,12 @@
 package com.avispl.symphony.dal.communicator.ppdswave;
 
 import com.avispl.symphony.api.dal.control.Controller;
+import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.dto.monitor.aggregator.AggregatedDevice;
+import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.api.dal.monitor.aggregator.Aggregator;
 import com.avispl.symphony.dal.aggregator.parser.AggregatedDeviceProcessor;
@@ -16,16 +18,15 @@ import com.avispl.symphony.dal.aggregator.parser.PropertiesMappingParser;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.ReportedDataWrapper;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.ResponseWrapper;
-import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Alert;
-import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Bookmarks;
-import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Display;
-import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Group;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.*;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.LatestJob;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.PowerSchedule;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.Schedule;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.TimeBlock;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.CustomerByHandle;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.Data;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.source.ContentSource;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.source.Source;
 import com.avispl.symphony.dal.communicator.ppdswave.error.PPDSWaveCommandExecutionException;
 import com.avispl.symphony.dal.util.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,6 +35,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.CollectionUtils;
 
+import javax.security.auth.login.FailedLoginException;
 import java.io.*;
 import java.net.ConnectException;
 import java.net.Socket;
@@ -42,6 +44,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
+import static com.avispl.symphony.dal.communicator.ppdswave.Constants.ControlProperties.INPUT_SOURCE;
 import static com.avispl.symphony.dal.communicator.ppdswave.Constants.Utility.EMPTY_STRING;
 import static java.util.stream.Collectors.toList;
 
@@ -144,7 +147,10 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                     }
                 } catch (Exception e) {
                     retrievedWithErrors = true;
-                    latestErrors.put(e.toString(), e.getMessage());
+                    if (e instanceof CommandFailureException) {
+                        String code = String.valueOf(((CommandFailureException)e).getStatusCode());
+                        latestErrors.put(code, e.getMessage());
+                    }
                     logger.error("Error occurred during device list retrieval", e);
                 }
                 if (!retrievedWithErrors) {
@@ -528,6 +534,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
     @Override
     public List<AggregatedDevice> retrieveMultipleStatistics() throws Exception {
+        if (!latestErrors.isEmpty()) {
+            if (latestErrors.containsKey("403") || latestErrors.containsKey("401")) {
+                throw new FailedLoginException("Authorization failed, please check API Token");
+            }
+        }
         long currentTimestamp = System.currentTimeMillis();
         nextDevicesCollectionIterationTimestamp = currentTimestamp;
         updateValidRetrieveStatisticsTimestamp();
@@ -711,6 +722,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                     processDeviceAlerts(aggregatedDevice, display);
                     processDeviceBookmarks(aggregatedDevice, display);
                     processDevicePowerSchedule(aggregatedDevice, display);
+                    processDeviceInputSources(aggregatedDevice, display);
 
                     processDeviceAppSubscriptions(aggregatedDevice, display);
                     processDeviceGroups(aggregatedDevice, display);
@@ -721,6 +733,37 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 }
             }
         }
+    }
+
+    /**
+     * Process device input source details. Generate inputSource dropdown with a list of available options
+     * and current value (if specified)
+     *
+     * @param aggregatedDevice to process scheduling data for
+     * @param deviceNode       object containing all the data necessary
+     */
+    private void processDeviceInputSources(AggregatedDevice aggregatedDevice, Display deviceNode) {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Processing device content source: " + aggregatedDevice + " " + deviceNode);
+        }
+        ContentSource contentSource = deviceNode.getContentSource();
+        if (contentSource == null) {
+            return;
+        }
+        List<Source> available = contentSource.getAvailable();
+        if (available == null || available.isEmpty()) {
+            return;
+        }
+        Map<String, String> properties = aggregatedDevice.getProperties();
+        List<AdvancedControllableProperty> controls = aggregatedDevice.getControllableProperties();
+
+        String currentValue = contentSource.getCurrent();
+        properties.put(INPUT_SOURCE, contentSource.getCurrent());
+        controls.removeIf(advancedControllableProperty -> INPUT_SOURCE.equals(advancedControllableProperty.getName()));
+
+        List<String> contentSourceOptions = available.stream().map(Source::getSource).collect(toList());
+        contentSourceOptions.add(Constants.Utility.EMPTY);
+        controls.add(createDropdown(INPUT_SOURCE, contentSourceOptions, contentSourceOptions, currentValue));
     }
 
     /**
@@ -962,7 +1005,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeInput(String displayId, String inputState) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.INPUT, displayId, inputState), JsonNode.class);
+            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.INPUT, displayId, Constants.Utility.EMPTY.equals(inputState) ? EMPTY_STRING : inputState), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Input change command for the device with id %s with value %s", displayId, inputState), ex);
         }
@@ -1077,6 +1120,21 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 }
         );
         device.ifPresent(aggregatedDevice -> aggregatedDevice.getProperties().put(name, value));
+    }
+
+    /**
+     * Create a dropdown {@link @AdvancedControllableProperty} instance
+     *
+     * @param name of the property
+     * @param initialValue initial property value
+     * @param labels representing human-readable option labels
+     * @param options representing options values
+     * */
+    private AdvancedControllableProperty createDropdown(String name, List<String> options, List<String> labels, String initialValue) {
+        AdvancedControllableProperty.DropDown dropDown = new AdvancedControllableProperty.DropDown();
+        dropDown.setOptions(options.toArray(new String[0]));
+        dropDown.setLabels(labels.toArray(new String[0]));
+        return new AdvancedControllableProperty(name, new Date(), dropDown, initialValue);
     }
 
     /**
