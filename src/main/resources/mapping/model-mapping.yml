@@ -36,7 +36,6 @@ models:
         # Video info
         Video#Brightness: at("/brightness/reported")
         Video#Orientation: at("/orientation/reported")
-        Video#InputSource: at("/inputSource/current/reported/source")
         Video#SignalDetection: at("/signalDetection/reported")
         # Network info
         NetworkInformation#MACAddress: at("/networkInformation/ethernetMacAddress")
@@ -112,11 +111,6 @@ models:
           options: "LANDSCAPE,PORTRAIT"
           labels: "LANDSCAPE,PORTRAIT"
           value: at("/orientation/reported")
-        Video#InputSource:
-          type: DropDown
-          options: at("/inputSource/available").toString().replaceAll("[^a-zA-Z0-9-,]", "")
-          labels: at("/inputSource/available").toString().replaceAll("[^a-zA-Z0-9-,]", "")
-          value: at("/inputSource/current/reported/source")
         Power#Mode:
           type: Switch
           value: at("/power/reported")?.asText().equals("ON")
