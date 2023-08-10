@@ -31,6 +31,7 @@ public interface Constants {
         String EMPTY_STRING = "";
         String EMPTY = "Empty";
         String NONE = "None";
+        String COLON_CONTENT = "%s:%s";
     }
     /** Source types constants */
     interface SourceType {
@@ -38,6 +39,7 @@ public interface Constants {
         String BOOKMARK = "Other:BOOKMARK";
         String INPUT = "Other:INPUT";
         String PLAYLIST = "Other:PLAYLIST";
+        String PREFIX = "Other:";
     }
     /** Control properties */
     interface ControlProperties {
@@ -57,6 +59,7 @@ public interface Constants {
         String CONTROL_LED_COLOR = "System#LEDStripColor";
         String CONTROL_ALIAS = "System#Alias";
         String CONTROL_PORTS_CONTROL = "System#PortsControl";
+        String CONTENT_SOURCE_NAME = "ContentSource";
     }
     /** GraphQL path */
     interface GraphQLProperties {
