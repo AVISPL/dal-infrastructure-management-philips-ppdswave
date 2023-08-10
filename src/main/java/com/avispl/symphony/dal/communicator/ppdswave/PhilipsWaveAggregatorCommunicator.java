@@ -1266,6 +1266,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Updates cached devices' control value, after the control command was executed with the specified value.
      * It is done in order for aggregator to populate latest control values, after the control command has been executed,
      * but before the next devices details polling cycle was addressed.
+     * If the type of the controllable property is DropDown of a certain kind (one that ends with ContentSource) -
+     * we need to make sure that other controls of the same type are updated on the device, otherwise user may face
+     * inconsistent behaviour, with wrong external options being displayed in dropdowns of the same kind.
+     * E.g, if the VideoInput dropdown is updated to VIDEO type, other ContentSource controls should then display
+     * selected option of "Other:INPUT:%selectedOption%", and previous "Other:" options must be removed.
      *
      * @param deviceId to update control value for
      * @param name     of the control property
@@ -1274,14 +1279,70 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
     private void updateLocalControlValue(String deviceId, String name, String value) {
         Optional<AggregatedDevice> device = aggregatedDevices.values().stream().filter(aggregatedDevice ->
                 deviceId.equals(aggregatedDevice.getDeviceId())).findFirst();
-        device.flatMap(aggregatedDevice ->
-                aggregatedDevice.getControllableProperties().stream().filter(advancedControllableProperty ->
-                        name.equals(advancedControllableProperty.getName())).findFirst()).ifPresent(advancedControllableProperty -> {
+        if (!device.isPresent()) {
+            return;
+        }
+        List<AdvancedControllableProperty> deviceControls = device.get().getControllableProperties();
+        Date currentDate = new Date();
+        deviceControls.stream().filter(advancedControllableProperty ->
+                name.equals(advancedControllableProperty.getName())).findFirst().ifPresent(advancedControllableProperty -> {
                     advancedControllableProperty.setValue(value);
-                    advancedControllableProperty.setTimestamp(new Date());
+                    advancedControllableProperty.setTimestamp(currentDate);
+                    AdvancedControllableProperty.ControllableType type = advancedControllableProperty.getType();
+                    if (type instanceof  AdvancedControllableProperty.DropDown) {
+                        removeExternalControlDropDownEntries((AdvancedControllableProperty.DropDown)type, null);
+                        deviceControls.stream().filter(control -> control.getName().endsWith(Constants.ControlProperties.CONTENT_SOURCE_NAME) && !control.getName().equals(name)).forEach(control -> {
+                            String newExternalValue = null;
+                            switch (name) {
+                                case Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE:
+                                    newExternalValue = String.format(Constants.Utility.COLON_CONTENT, Constants.SourceType.INPUT, value);
+                                    break;
+                                case Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE:
+                                    newExternalValue = String.format(Constants.Utility.COLON_CONTENT, Constants.SourceType.PLAYLIST, value);
+                                    break;
+                                case Constants.ControlProperties.CONTROL_APPLICATION_SOURCE:
+                                    newExternalValue = String.format(Constants.Utility.COLON_CONTENT, Constants.SourceType.APPLICATION, value);
+                                    break;
+                                case Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE:
+                                    newExternalValue = String.format(Constants.Utility.COLON_CONTENT, Constants.SourceType.BOOKMARK, value);
+                                    break;
+                                default:
+                                    if (logger.isDebugEnabled()) {
+                                       logger.debug("Skipping external value update for property " + control.getName());
+                                    }
+                                    break;
+                            }
+                            control.setTimestamp(currentDate);
+                            control.setValue(newExternalValue);
+                            AdvancedControllableProperty.ControllableType externalType = control.getType();
+                            if (externalType instanceof  AdvancedControllableProperty.DropDown) {
+                                removeExternalControlDropDownEntries((AdvancedControllableProperty.DropDown)externalType, newExternalValue);
+                            }
+                        });
+                    }
                 }
+
         );
         device.ifPresent(aggregatedDevice -> aggregatedDevice.getProperties().put(name, value));
+    }
+
+    /**
+     * Remove external dropdown entries from the dropdown and add another external option, if provided
+     *
+     * @param dropDown to update options for
+     * @param updatedSelection new dropdown selection
+     * */
+    private void removeExternalControlDropDownEntries(AdvancedControllableProperty.DropDown dropDown, String updatedSelection) {
+        List<String> newLabels = Arrays.stream(dropDown.getLabels()).collect(toList());
+        List<String> newOptions = Arrays.stream(dropDown.getOptions()).collect(toList());
+        newLabels.removeIf(s -> s.startsWith(Constants.SourceType.PREFIX));
+        newOptions.removeIf(s -> s.startsWith(Constants.SourceType.PREFIX));
+        if (updatedSelection != null) {
+            newLabels.add(updatedSelection);
+            newOptions.add(updatedSelection);
+        }
+        dropDown.setLabels(newLabels.toArray(new String[0]));
+        dropDown.setOptions(newOptions.toArray(new String[0]));
     }
 
     /**
