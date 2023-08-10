@@ -515,8 +515,6 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         }
         if (controlPropagated) {
             updateLocalControlValue(deviceId, command, value);
-            // Trigger devices update right away, emergency-delivery like, since properties may change based on controls states
-            validDeviceDetailsRetrievalPeriodTimestamp = System.currentTimeMillis();
         }
     }
 
