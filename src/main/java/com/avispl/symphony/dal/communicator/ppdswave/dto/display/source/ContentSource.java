@@ -16,6 +16,57 @@ import java.util.stream.Collectors;
  * @since 1.0.0
  * */
 public class ContentSource {
+    public class SourceType {
+        public SourceType(String type, String value) {
+            this.type = type;
+            this.value = value;
+        }
+
+        private String type;
+        private String value;
+
+        /**
+         * Retrieves {@link #type}
+         *
+         * @return value of {@link #type}
+         */
+        public String getType() {
+            return type;
+        }
+
+        /**
+         * Sets {@link #type} value
+         *
+         * @param type new value of {@link #type}
+         */
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        /**
+         * Retrieves {@link #value}
+         *
+         * @return value of {@link #value}
+         */
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Sets {@link #value} value
+         *
+         * @param value new value of {@link #value}
+         */
+        public void setValue(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s:%s", type, value);
+        }
+    }
+
     private List<Source> available;
     private Current current;
 
@@ -24,9 +75,14 @@ public class ContentSource {
      *
      * @return value of {@link #available}
      */
-    public List<Source> getAvailable() {
+    public List<Source> getAvailableInputSources() {
         return available.stream().filter(source -> source != null &&
                 StringUtils.isNotNullOrEmpty(source.getSource())).collect(Collectors.toList());
+    }
+
+    public List<Source> getAvailableAppContentSources() {
+        return available.stream().filter(source -> source != null &&
+                StringUtils.isNotNullOrEmpty(source.getApplicationId())).collect(Collectors.toList());
     }
 
     /**
@@ -43,16 +99,30 @@ public class ContentSource {
      *
      * @return String value of {@link #current} content source
      */
-    public String getCurrent() {
+    public SourceType getCurrent() {
+        SourceType defaultType = new SourceType(Constants.Utility.EMPTY, Constants.Utility.EMPTY);
         if (current == null) {
-            return Constants.Utility.EMPTY;
+            return defaultType;
         }
         Source reportedSource = current.getReported();
         if (reportedSource == null) {
-            return Constants.Utility.EMPTY;
+            return defaultType;
         }
         String sourceValue = reportedSource.getSource();
-        return StringUtils.isNullOrEmpty(sourceValue) ? Constants.Utility.EMPTY : sourceValue;
+        String applicationId = reportedSource.getApplicationId();
+        String playlistId = reportedSource.getPlaylistId();
+        String bookmarkIndex = reportedSource.getIndex();
+
+        if (StringUtils.isNotNullOrEmpty(sourceValue)) {
+            return new SourceType(Constants.SourceType.INPUT, sourceValue);
+        } else if (StringUtils.isNotNullOrEmpty(applicationId)) {
+            return new SourceType(Constants.SourceType.APPLICATION, applicationId);
+        } else if (StringUtils.isNotNullOrEmpty(playlistId)) {
+            return new SourceType(Constants.SourceType.PLAYLIST, playlistId);
+        } else if (StringUtils.isNotNullOrEmpty(bookmarkIndex)) {
+            return new SourceType(Constants.SourceType.BOOKMARK, bookmarkIndex);
+        }
+        return defaultType;
     }
 
     /**

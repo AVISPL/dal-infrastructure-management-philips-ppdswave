@@ -4,6 +4,7 @@
 package com.avispl.symphony.dal.communicator.ppdswave.dto;
 
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Display;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Playlist;
 
 import java.util.List;
 
@@ -14,6 +15,7 @@ import java.util.List;
  * @since 1.0.0
  * */
 public class CustomerByHandle {
+    private List<Playlist> playlists;
     private List<Display> displays;
 
     /**
@@ -32,5 +34,23 @@ public class CustomerByHandle {
      */
     public void setDisplays(List<Display> displays) {
         this.displays = displays;
+    }
+
+    /**
+     * Retrieves {@link #playlists}
+     *
+     * @return value of {@link #playlists}
+     */
+    public List<Playlist> getPlaylists() {
+        return playlists;
+    }
+
+    /**
+     * Sets {@link #playlists} value
+     *
+     * @param playlists new value of {@link #playlists}
+     */
+    public void setPlaylists(List<Playlist> playlists) {
+        this.playlists = playlists;
     }
 }
