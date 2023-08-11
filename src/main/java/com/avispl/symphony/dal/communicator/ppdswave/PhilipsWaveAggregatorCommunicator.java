@@ -84,6 +84,7 @@ import static java.util.stream.Collectors.toList;
  * <li>Led Strip Color</li>
  *
  * @author Maksym.Rossiytsev
+ * Created on 10/07/2023
  * @since 1.0.0
  */
 public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implements Aggregator, Monitorable, Controller {

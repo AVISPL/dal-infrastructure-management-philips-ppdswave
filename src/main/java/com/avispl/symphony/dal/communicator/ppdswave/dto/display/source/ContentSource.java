@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
  * Content Source node, containing information about available and current source values
  *
  * @author Maksym.Rossiytsev
+ * Created on 10/08/2023
  * @since 1.0.0
  * */
 public class ContentSource {
@@ -71,7 +72,7 @@ public class ContentSource {
     private Current current;
 
     /**
-     * Retrieves {@link #available}, omitting the blank values, since PPDS Wave API may include blank values
+     * Retrieves {@link #available}, by source, omitting the blank values, since PPDS Wave API may include blank values
      *
      * @return value of {@link #available}
      */
@@ -80,6 +81,11 @@ public class ContentSource {
                 StringUtils.isNotNullOrEmpty(source.getSource())).collect(Collectors.toList());
     }
 
+    /**
+     * Retrieves {@link #available}, by applicationId omitting the blank values, since PPDS Wave API may include blank values
+     *
+     * @return value of {@link #available}
+     */
     public List<Source> getAvailableAppContentSources() {
         return available.stream().filter(source -> source != null &&
                 StringUtils.isNotNullOrEmpty(source.getApplicationId())).collect(Collectors.toList());
@@ -115,11 +121,14 @@ public class ContentSource {
 
         if (StringUtils.isNotNullOrEmpty(sourceValue)) {
             return new SourceType(Constants.SourceType.INPUT, sourceValue);
-        } else if (StringUtils.isNotNullOrEmpty(applicationId)) {
+        }
+        if (StringUtils.isNotNullOrEmpty(applicationId)) {
             return new SourceType(Constants.SourceType.APPLICATION, applicationId);
-        } else if (StringUtils.isNotNullOrEmpty(playlistId)) {
+        }
+        if (StringUtils.isNotNullOrEmpty(playlistId)) {
             return new SourceType(Constants.SourceType.PLAYLIST, playlistId);
-        } else if (StringUtils.isNotNullOrEmpty(bookmarkIndex)) {
+        }
+        if (StringUtils.isNotNullOrEmpty(bookmarkIndex)) {
             return new SourceType(Constants.SourceType.BOOKMARK, bookmarkIndex);
         }
         return defaultType;

@@ -7,6 +7,7 @@ package com.avispl.symphony.dal.communicator.ppdswave;
  * Aggregator constants, includes monitor/control Property names and GraphQL paths
  *
  * @author Maksym.Rossiytsev
+ * Created on 10/07/2023
  * @since 1.0.0
  * */
 public interface Constants {

@@ -9,6 +9,7 @@ import java.util.Date;
  * Display alert entry
  *
  * @author Maksym.Rossiytsev
+ * Created on 10/07/2023
  * @since 1.0.0
  * */
 public class Alert {
