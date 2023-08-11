@@ -25,11 +25,13 @@ public interface Constants {
         String ALERTS_ALERT_LAST_OCCURRED = "Alerts#Alert%02d_LastOccurred";
         String ALERTS_ALERT_TOTAL_COUNT = "Alerts#TotalCount";
         String SYSTEM_GROUPS = "System#Groups";
+        String CONTENT_SOURCE = "ContentSource#CurrentSource";
     }
     /** Utility constants */
     interface Utility {
         String EMPTY_STRING = "";
         String EMPTY = "Empty";
+        String NONE_LABEL = "-NONE-";
         String NONE = "None";
         String COLON_CONTENT = "%s:%s";
     }
@@ -39,6 +41,10 @@ public interface Constants {
         String BOOKMARK = "Other:BOOKMARK";
         String INPUT = "Other:INPUT";
         String PLAYLIST = "Other:PLAYLIST";
+        String APPLICATION_NAME = "APPLICATION";
+        String BOOKMARK_NAME = "BOOKMARK";
+        String INPUT_NAME = "INPUT";
+        String PLAYLIST_NAME = "PLAYLIST";
         String PREFIX = "Other:";
     }
     /** Control properties */
@@ -47,10 +53,11 @@ public interface Constants {
         String CONTROL_VIDEO_BRIGHTNESS = "Video#Brightness";
         String CONTROL_VIDEO_ORIENTATION = "Video#Orientation";
         String CONTROL_AUDIO_MUTE = "Audio#Mute";
-        String CONTROL_VIDEO_INPUT_SOURCE = "Video#ContentSource";
-        String CONTROL_APPLICATION_SOURCE = "Applications#ContentSource";
-        String CONTROL_BOOKMARK_SOURCE = "Bookmarks#ContentSource";
-        String CONTROL_PLAYLIST_SOURCE = "Playlists#ContentSource";
+        String CONTROL_VIDEO_INPUT_SOURCE = "ContentSource#SourceVideoInput";
+        String CONTROL_APPLICATION_SOURCE = "ContentSource#SourceApplication";
+        String CONTROL_BOOKMARK_SOURCE = "ContentSource#SourceBookmark";
+        String CONTROL_PLAYLIST_SOURCE = "ContentSource#SourcePlaylist";
+        String CONTROL_CONTENT_SOURCE = "ContentSource#ContentSourceType";
         String CONTROL_POWER_MODE = "Power#Mode";
         String CONTROL_POWER_REBOOT = "Power#Reboot";
         String CONTROL_SCREENSHOT_CREATE = "Screenshot#Create";
