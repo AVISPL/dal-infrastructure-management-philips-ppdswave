@@ -7,6 +7,7 @@ package com.avispl.symphony.dal.communicator.ppdswave.dto.display.source;
  * Input source value wrapper
  *
  * @author Maksym.Rossiytsev
+ * Created on 10/08/2023
  * @since 1.0.0
  * */
 public class Source {
