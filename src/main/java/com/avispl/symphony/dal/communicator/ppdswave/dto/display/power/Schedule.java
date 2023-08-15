@@ -10,6 +10,7 @@ import java.util.List;
  * Power schedule data
  *
  * @author Maksym.Rossiytsev
+ * Created on 10/07/2023
  * @since 1.0.0
  * */
 public class Schedule {
