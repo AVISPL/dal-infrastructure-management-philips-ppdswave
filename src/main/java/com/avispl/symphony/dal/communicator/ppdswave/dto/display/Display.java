@@ -4,6 +4,7 @@
 package com.avispl.symphony.dal.communicator.ppdswave.dto.display;
 
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.PowerSchedule;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.source.ContentSource;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ import java.util.List;
  * Display data container
  *
  * @author Maksym.Rossiytsev
+ * Created on 10/07/2023
  * @since 1.0.0
  * */
 public class Display {
@@ -21,6 +23,7 @@ public class Display {
     private List<Group> groups;
     private List<AppSubscription> appSubscriptions;
     private Bookmarks bookmarks;
+    private ContentSource contentSource;
 
     /**
      * Retrieves {@link #displayType}
@@ -146,5 +149,23 @@ public class Display {
      */
     public void setId(String id) {
         this.id = id;
+    }
+
+    /**
+     * Retrieves {@link #contentSource}
+     *
+     * @return value of {@link #contentSource}
+     */
+    public ContentSource getContentSource() {
+        return contentSource;
+    }
+
+    /**
+     * Sets {@link #contentSource} value
+     *
+     * @param contentSource new value of {@link #contentSource}
+     */
+    public void setContentSource(ContentSource contentSource) {
+        this.contentSource = contentSource;
     }
 }
