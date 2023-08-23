@@ -373,14 +373,14 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
     /**
      * Selected content source for existing devices. It is grants proper content source dropdowns and selected options rendered
-     * */
+     */
     private final ConcurrentHashMap<String, String> deviceSelectedContentSource = new ConcurrentHashMap<>();
 
     /**
      * Reentrant lock to avoid altering device's controls and properties while control operation is in progress.
      * Normally, control operations imply that the current control value is changed to the new one, so we need to make
      * sure they are updated in the right order
-     * */
+     */
     private final DeviceLock controlOperationsLock = new DeviceLock();
 
     /**
@@ -814,30 +814,34 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         if (available == null || available.isEmpty()) {
             return;
         }
-        ContentSource.SourceType sourceType = contentSource.getCurrent();
-        String currentValue = sourceType.getValue();
-        String currentType = sourceType.getType();
+        try {
+            ContentSource.SourceType sourceType = contentSource.getCurrent();
+            String currentValue = sourceType.getValue();
+            String currentType = sourceType.getType();
 
-        List<String> applicationIds = available.stream().map(Source::getApplicationId).collect(toList());
-        List<String> applicationLabels = available.stream().map(Source::getLabel).collect(toList());
-        boolean matchedType = Constants.SourceType.APPLICATION.equals(currentType);
-        boolean deviceContentSourceRecordMatch = Constants.SourceType.APPLICATION_NAME.equals(deviceSelectedContentSource.get(deviceId));
-        String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
-        if (matchedType || deviceContentSourceRecordMatch) {
-            properties.put(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, controlValue);
-            if (matchedType) {
-                properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, applicationLabels.get(applicationIds.indexOf(currentValue)));
+            List<String> applicationIds = available.stream().map(Source::getApplicationId).collect(toList());
+            List<String> applicationLabels = available.stream().map(Source::getLabel).collect(toList());
+            boolean matchedType = Constants.SourceType.APPLICATION.equals(currentType);
+            boolean deviceContentSourceRecordMatch = Constants.SourceType.APPLICATION_NAME.equals(deviceSelectedContentSource.get(deviceId));
+            String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
+            if (matchedType || deviceContentSourceRecordMatch) {
+                properties.put(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, controlValue);
+                if (matchedType) {
+                    properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, applicationLabels.get(applicationIds.indexOf(currentValue)));
+                }
             }
-        }
-        if (matchedType && !deviceContentSourceRecordMatch) {
-            deviceSelectedContentSource.put(deviceId, Constants.SourceType.APPLICATION_NAME);
-        }
+            if (matchedType && !deviceContentSourceRecordMatch) {
+                deviceSelectedContentSource.put(deviceId, Constants.SourceType.APPLICATION_NAME);
+            }
 
-        if (!matchedType) {
-            applicationIds.add(Constants.Utility.NONE_LABEL);
-            applicationLabels.add(Constants.Utility.NONE_LABEL);
+            if (!matchedType) {
+                applicationIds.add(Constants.Utility.NONE_LABEL);
+                applicationLabels.add(Constants.Utility.NONE_LABEL);
+            }
+            controls.add(createDropdown(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, applicationIds, applicationLabels, controlValue));
+        } catch (Exception e) {
+            logger.warn("Unable to process device application sources", e);
         }
-        controls.add(createDropdown(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, applicationIds, applicationLabels, controlValue));
     }
 
     /**
@@ -859,30 +863,34 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         if (playlists == null || playlists.isEmpty()) {
             return;
         }
-        ContentSource.SourceType sourceType = contentSource.getCurrent();
-        String currentValue = sourceType.getValue();
-        String currentType = sourceType.getType();
+        try {
+            ContentSource.SourceType sourceType = contentSource.getCurrent();
+            String currentValue = sourceType.getValue();
+            String currentType = sourceType.getType();
 
-        List<String> playlistIds = playlists.stream().map(Playlist::getId).collect(toList());
-        List<String> playlistTitles = playlists.stream().map(Playlist::getTitle).collect(toList());
-        boolean matchedType = Constants.SourceType.PLAYLIST.equals(currentType);
-        boolean deviceContentSourceRecordMatch = Constants.SourceType.PLAYLIST_NAME.equals(deviceSelectedContentSource.get(deviceId));
-        String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
-        if (matchedType || deviceContentSourceRecordMatch) {
-            properties.put(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, controlValue);
-            if (matchedType) {
-                properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, playlistTitles.get(playlistIds.indexOf(currentValue)));
+            List<String> playlistIds = playlists.stream().map(Playlist::getId).collect(toList());
+            List<String> playlistTitles = playlists.stream().map(Playlist::getTitle).collect(toList());
+            boolean matchedType = Constants.SourceType.PLAYLIST.equals(currentType);
+            boolean deviceContentSourceRecordMatch = Constants.SourceType.PLAYLIST_NAME.equals(deviceSelectedContentSource.get(deviceId));
+            String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
+            if (matchedType || deviceContentSourceRecordMatch) {
+                properties.put(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, controlValue);
+                if (matchedType) {
+                    properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, playlistTitles.get(playlistIds.indexOf(currentValue)));
+                }
             }
-        }
-        if (matchedType && !deviceContentSourceRecordMatch) {
-            deviceSelectedContentSource.put(deviceId, Constants.SourceType.PLAYLIST_NAME);
-        }
+            if (matchedType && !deviceContentSourceRecordMatch) {
+                deviceSelectedContentSource.put(deviceId, Constants.SourceType.PLAYLIST_NAME);
+            }
 
-        if (!matchedType) {
-            playlistIds.add(Constants.Utility.NONE_LABEL);
-            playlistTitles.add(Constants.Utility.NONE_LABEL);
+            if (!matchedType) {
+                playlistIds.add(Constants.Utility.NONE_LABEL);
+                playlistTitles.add(Constants.Utility.NONE_LABEL);
+            }
+            controls.add(createDropdown(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, playlistIds, playlistTitles, controlValue));
+        } catch (Exception e) {
+            logger.warn("Unable to process device playlist options", e);
         }
-        controls.add(createDropdown(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, playlistIds, playlistTitles, controlValue));
     }
 
     /**
@@ -905,27 +913,31 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         if (available == null || available.isEmpty()) {
             return;
         }
-        List<String> contentSourceOptions = available.stream().map(Source::getSource).collect(toList());
-        ContentSource.SourceType sourceType = contentSource.getCurrent();
-        String currentValue = sourceType.getValue();
-        String currentType = sourceType.getType();
+        try {
+            List<String> contentSourceOptions = available.stream().map(Source::getSource).collect(toList());
+            ContentSource.SourceType sourceType = contentSource.getCurrent();
+            String currentValue = sourceType.getValue();
+            String currentType = sourceType.getType();
 
-        boolean matchedType = Constants.SourceType.INPUT.equals(currentType);
-        boolean deviceContentSourceRecordMatch = Constants.SourceType.INPUT_NAME.equals(deviceSelectedContentSource.get(deviceId));
-        String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
-        if (matchedType || deviceContentSourceRecordMatch) {
-            properties.put(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, controlValue);
-            if (matchedType) {
-                properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, currentValue);
+            boolean matchedType = Constants.SourceType.INPUT.equals(currentType);
+            boolean deviceContentSourceRecordMatch = Constants.SourceType.INPUT_NAME.equals(deviceSelectedContentSource.get(deviceId));
+            String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
+            if (matchedType || deviceContentSourceRecordMatch) {
+                properties.put(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, controlValue);
+                if (matchedType) {
+                    properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, currentValue);
+                }
             }
+            if (matchedType && !deviceContentSourceRecordMatch) {
+                deviceSelectedContentSource.put(deviceId, Constants.SourceType.INPUT_NAME);
+            }
+            if (!matchedType) {
+                contentSourceOptions.add(Constants.Utility.NONE_LABEL);
+            }
+            controls.add(createDropdown(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, contentSourceOptions, contentSourceOptions, controlValue));
+        } catch (Exception e) {
+            logger.warn("Unable to process device video inputs", e);
         }
-        if (matchedType && !deviceContentSourceRecordMatch) {
-            deviceSelectedContentSource.put(deviceId, Constants.SourceType.INPUT_NAME);
-        }
-        if (!matchedType) {
-            contentSourceOptions.add(Constants.Utility.NONE_LABEL);
-        }
-        controls.add(createDropdown(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, contentSourceOptions, contentSourceOptions, controlValue));
     }
 
     /**
@@ -1026,42 +1038,45 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         if (data == null) {
             return;
         }
-
-        int index = 0;
-        List<String> bookmarkIds = new ArrayList<>();
-        for (String bookmark : data) {
-            if (StringUtils.isNotNullOrEmpty(bookmark)) {
-                bookmarkIds.add(String.valueOf(index));
-            } else {
-                bookmarkIds.add(EMPTY);
+        try {
+            int index = 0;
+            List<String> bookmarkIds = new ArrayList<>();
+            for (String bookmark : data) {
+                if (StringUtils.isNotNullOrEmpty(bookmark)) {
+                    bookmarkIds.add(String.valueOf(index));
+                } else {
+                    bookmarkIds.add(EMPTY);
+                }
+                index++;
             }
-            index++;
-        }
-        ContentSource contentSource = deviceNode.getContentSource();
-        if (contentSource == null) {
-            return;
-        }
-        ContentSource.SourceType sourceType = contentSource.getCurrent();
-        String currentValue = sourceType.getValue();
-        String currentType = sourceType.getType();
-
-        boolean matchedType = Constants.SourceType.BOOKMARK.equals(currentType);
-        boolean deviceContentSourceRecordMatch = Constants.SourceType.BOOKMARK_NAME.equals(deviceSelectedContentSource.get(deviceId));
-        String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
-        if (matchedType || deviceContentSourceRecordMatch) {
-            properties.put(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, controlValue);
-            if (matchedType) {
-                properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, data.get(bookmarkIds.indexOf(currentValue)));
+            ContentSource contentSource = deviceNode.getContentSource();
+            if (contentSource == null) {
+                return;
             }
+            ContentSource.SourceType sourceType = contentSource.getCurrent();
+            String currentValue = sourceType.getValue();
+            String currentType = sourceType.getType();
+
+            boolean matchedType = Constants.SourceType.BOOKMARK.equals(currentType);
+            boolean deviceContentSourceRecordMatch = Constants.SourceType.BOOKMARK_NAME.equals(deviceSelectedContentSource.get(deviceId));
+            String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
+            if (matchedType || deviceContentSourceRecordMatch) {
+                properties.put(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, controlValue);
+                if (matchedType) {
+                    properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, data.get(bookmarkIds.indexOf(currentValue)));
+                }
+            }
+            if (matchedType && !deviceContentSourceRecordMatch) {
+                deviceSelectedContentSource.put(deviceId, Constants.SourceType.BOOKMARK_NAME);
+            }
+            if (!matchedType) {
+                bookmarkIds.add(Constants.Utility.NONE_LABEL);
+                data.add(Constants.Utility.NONE_LABEL);
+            }
+            controls.add(createDropdown(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, bookmarkIds, data, controlValue));
+        } catch (Exception e) {
+            logger.warn("Unable to process device bookmark sources", e);
         }
-        if (matchedType && !deviceContentSourceRecordMatch) {
-            deviceSelectedContentSource.put(deviceId, Constants.SourceType.BOOKMARK_NAME);
-        }
-        if (!matchedType) {
-            bookmarkIds.add(Constants.Utility.NONE_LABEL);
-            data.add(Constants.Utility.NONE_LABEL);
-        }
-        controls.add(createDropdown(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, bookmarkIds, data, controlValue));
     }
 
     /**
@@ -1098,9 +1113,9 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Change active content source type
      *
      * @param deviceId to change content source type for
-     * @param value new value of the content source type
-     * */
-    private void commandChangeContentSourceType(String deviceId, String value){
+     * @param value    new value of the content source type
+     */
+    private void commandChangeContentSourceType(String deviceId, String value) {
         AggregatedDevice aggregatedDevice = aggregatedDevices.get(deviceId);
         if (aggregatedDevice == null) {
             return;
@@ -1130,6 +1145,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 break;
         }
     }
+
     /**
      * Reboot command execution
      *
@@ -1399,16 +1415,16 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                     advancedControllableProperty.setTimestamp(currentDate);
                     AdvancedControllableProperty.ControllableType type = advancedControllableProperty.getType();
 
-                    if (type instanceof  AdvancedControllableProperty.DropDown) {
-                        String activeLabel = updateNoneControlEntriesAndReturnLabel((AdvancedControllableProperty.DropDown)type, value,false);
+                    if (type instanceof AdvancedControllableProperty.DropDown) {
+                        String activeLabel = updateNoneControlEntriesAndReturnLabel((AdvancedControllableProperty.DropDown) type, value, false);
 
                         properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, activeLabel);
                         deviceControls.stream().filter(control -> control.getName().startsWith(Constants.ControlProperties.CONTENT_SOURCE_NAME + "#Source") && !control.getName().equals(name)).forEach(control -> {
                             control.setTimestamp(currentDate);
                             control.setValue(Constants.Utility.NONE_LABEL);
                             AdvancedControllableProperty.ControllableType externalType = control.getType();
-                            if (externalType instanceof  AdvancedControllableProperty.DropDown) {
-                                updateNoneControlEntriesAndReturnLabel((AdvancedControllableProperty.DropDown)externalType, value, true);
+                            if (externalType instanceof AdvancedControllableProperty.DropDown) {
+                                updateNoneControlEntriesAndReturnLabel((AdvancedControllableProperty.DropDown) externalType, value, true);
                             }
                         });
                     }
@@ -1422,12 +1438,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Check and update dropdown for "-NONE-" entry and make sure it's there whenever needed, to make the
      * user experience smoother. Method returns selected option label, if available
      *
-     * @param dropDown to update options for
-     * @param value value of the control property to retrieve label by
+     * @param dropDown         to update options for
+     * @param value            value of the control property to retrieve label by
      * @param updatedSelection new dropdown selection
-     *
      * @return String value of control option label
-     * */
+     */
     private String updateNoneControlEntriesAndReturnLabel(AdvancedControllableProperty.DropDown dropDown, String value, boolean updatedSelection) {
         List<String> newLabels = Arrays.stream(dropDown.getLabels()).collect(toList());
         List<String> newOptions = Arrays.stream(dropDown.getOptions()).collect(toList());
