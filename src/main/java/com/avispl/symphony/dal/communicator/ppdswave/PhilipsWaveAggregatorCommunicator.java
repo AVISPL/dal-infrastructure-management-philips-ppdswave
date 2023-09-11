@@ -16,6 +16,7 @@ import com.avispl.symphony.dal.aggregator.parser.AggregatedDeviceProcessor;
 import com.avispl.symphony.dal.aggregator.parser.PropertiesMapping;
 import com.avispl.symphony.dal.aggregator.parser.PropertiesMappingParser;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
+import com.avispl.symphony.dal.communicator.ppdswave.concurrent.DeviceLock;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.ReportedDataWrapper;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.ResponseWrapper;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.*;
@@ -370,7 +371,17 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private final ConcurrentHashMap<String, AggregatedDevice> aggregatedDevices = new ConcurrentHashMap<>();
 
+    /**
+     * Selected content source for existing devices. It is grants proper content source dropdowns and selected options rendered
+     */
     private final ConcurrentHashMap<String, String> deviceSelectedContentSource = new ConcurrentHashMap<>();
+
+    /**
+     * Reentrant lock to avoid altering device's controls and properties while control operation is in progress.
+     * Normally, control operations imply that the current control value is changed to the new one, so we need to make
+     * sure they are updated in the right order
+     */
+    private final DeviceLock controlOperationsLock = new DeviceLock();
 
     /**
      * We don't want the statistics to be collected constantly, because if there's not a big list of devices -
@@ -451,6 +462,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         }
         aggregatedDevices.clear();
         latestErrors.clear();
+        deviceSelectedContentSource.clear();
         super.internalDestroy();
     }
 
@@ -460,68 +472,73 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         String command = controllableProperty.getProperty();
         String value = String.valueOf(controllableProperty.getValue());
 
-        boolean controlPropagated = true;
-        switch (command) {
-            case Constants.ControlProperties.CONTROL_AUDIO_MUTE:
-                commandChangeMuteStatus(deviceId, String.valueOf("1".equals(value)));
-                break;
-            case Constants.ControlProperties.CONTROL_AUDIO_VOLUME:
-                commandChangeVolume(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_VIDEO_BRIGHTNESS:
-                commandChangeBrightness(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_VIDEO_ORIENTATION:
-                commandChangeOrientation(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE:
-                commandChangeInput(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE:
-                commandChangeBookmark(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_APPLICATION_SOURCE:
-                commandChangeApplication(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE:
-                commandChangePlaylist(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_CONTENT_SOURCE:
-                commandChangeContentSourceType(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_POWER_MODE:
-                commandChangePowerState(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_SCREENSHOT_CREATE:
-                commandTakeScreenshot(deviceId);
-                break;
-            case Constants.ControlProperties.CONTROL_POWER_REBOOT:
-                commandReboot(deviceId);
-                break;
-            case Constants.ControlProperties.CONTROL_IR_CONTROL:
-                commandChangeIRMode(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_KEYBOARD_CONTROL:
-                commandChangeKeyboardMode(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_LED_COLOR:
-                commandChangeLedColor(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_ALIAS:
-                commandChangeAlias(deviceId, value);
-                break;
-            case Constants.ControlProperties.CONTROL_PORTS_CONTROL:
-                commandChangePortsControlState(deviceId, value);
-                break;
-            default:
-                if (logger.isWarnEnabled()) {
-                    logger.warn(String.format("Unable to execute %s command on device %s: Not Supported", command, deviceId));
-                }
-                controlPropagated = false;
-                break;
-        }
-        if (controlPropagated) {
-            updateLocalControlValue(deviceId, command, value);
+        controlOperationsLock.tryLock(deviceId);
+        try {
+            boolean controlPropagated = true;
+            switch (command) {
+                case Constants.ControlProperties.CONTROL_AUDIO_MUTE:
+                    commandChangeMuteStatus(deviceId, String.valueOf("1".equals(value)));
+                    break;
+                case Constants.ControlProperties.CONTROL_AUDIO_VOLUME:
+                    commandChangeVolume(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_VIDEO_BRIGHTNESS:
+                    commandChangeBrightness(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_VIDEO_ORIENTATION:
+                    commandChangeOrientation(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE:
+                    commandChangeInput(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE:
+                    commandChangeBookmark(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_APPLICATION_SOURCE:
+                    commandChangeApplication(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE:
+                    commandChangePlaylist(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_CONTENT_SOURCE:
+                    commandChangeContentSourceType(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_POWER_MODE:
+                    commandChangePowerState(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_SCREENSHOT_CREATE:
+                    commandTakeScreenshot(deviceId);
+                    break;
+                case Constants.ControlProperties.CONTROL_POWER_REBOOT:
+                    commandReboot(deviceId);
+                    break;
+                case Constants.ControlProperties.CONTROL_IR_CONTROL:
+                    commandChangeIRMode(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_KEYBOARD_CONTROL:
+                    commandChangeKeyboardMode(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_LED_COLOR:
+                    commandChangeLedColor(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_ALIAS:
+                    commandChangeAlias(deviceId, value);
+                    break;
+                case Constants.ControlProperties.CONTROL_PORTS_CONTROL:
+                    commandChangePortsControlState(deviceId, value);
+                    break;
+                default:
+                    if (logger.isWarnEnabled()) {
+                        logger.warn(String.format("Unable to execute %s command on device %s: Not Supported", command, deviceId));
+                    }
+                    controlPropagated = false;
+                    break;
+            }
+            if (controlPropagated) {
+                updateLocalControlValue(deviceId, command, value);
+            }
+        } finally {
+            controlOperationsLock.unlock(deviceId);
         }
     }
 
@@ -730,37 +747,48 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
             ArrayNode devicesDetails = (ArrayNode) customerDisplaysBasic.at(Constants.GraphQLProperties.GQL_PATH_DISPLAYS);
             for (JsonNode deviceDetails : devicesDetails) {
                 String displayId = deviceDetails.at(Constants.GraphQLProperties.GQL_PATH_ID).asText();
-                AggregatedDevice aggregatedDevice = aggregatedDevices.get(displayId);
-                Map<String, String> deviceProperties = aggregatedDevice.getProperties();
-                aggregatedDeviceProcessor.applyProperties(aggregatedDevice, deviceDetails, "WaveDevice");
-
-                Display display = displayDetails.get(displayId);
-                if (display != null) {
-                    Map<String, String> properties = aggregatedDevice.getProperties();
-                    Map<String, String> dynamicStatistics = aggregatedDevice.getDynamicStatistics();
-                    List<AdvancedControllableProperty> controls = aggregatedDevice.getControllableProperties();
-
-                    processDeviceAlerts(properties, dynamicStatistics, display);
-                    processDevicePowerSchedule(properties, display);
-
-                    //deviceSelectedContentSource
-                    String deviceId = aggregatedDevice.getDeviceId();
-                    processDeviceInputSources(deviceId, properties, controls, display);
-                    processDeviceBookmarks(deviceId, properties, controls, display);
-                    processDeviceAppContentSources(deviceId, properties, controls, display);
-                    processDevicePlaylistContentSources(deviceId, properties, controls, display, playlists);
-
-                    String selectedContentSource = deviceSelectedContentSource.get(deviceId);
-                    controls.add(createPreset(Constants.ControlProperties.CONTROL_CONTENT_SOURCE, Arrays.asList(Constants.SourceType.APPLICATION_NAME,
-                            Constants.SourceType.BOOKMARK_NAME, Constants.SourceType.INPUT_NAME, Constants.SourceType.PLAYLIST_NAME), selectedContentSource));
-                    properties.put(Constants.ControlProperties.CONTROL_CONTENT_SOURCE, selectedContentSource);
-
-                    processDeviceAppSubscriptions(aggregatedDevice, display);
-                    processDeviceGroups(aggregatedDevice, display);
-
-                    if (displayPropertyGroups.contains("screenshot")) {
-                        aggregatedDeviceProcessor.applyProperties(deviceProperties, deviceDetails, "ScreenshotInfo");
+                if (StringUtils.isNullOrEmpty(displayId)) {
+                    if (logger.isWarnEnabled()) {
+                        logger.warn("Unable to retrieve displayId for customer handle " + handle);
                     }
+                    continue;
+                }
+                controlOperationsLock.tryLock(displayId);
+                try {
+                    AggregatedDevice aggregatedDevice = aggregatedDevices.get(displayId);
+                    Map<String, String> deviceProperties = aggregatedDevice.getProperties();
+                    aggregatedDeviceProcessor.applyProperties(aggregatedDevice, deviceDetails, "WaveDevice");
+
+                    Display display = displayDetails.get(displayId);
+                    if (display != null) {
+                        Map<String, String> properties = aggregatedDevice.getProperties();
+                        Map<String, String> dynamicStatistics = aggregatedDevice.getDynamicStatistics();
+                        List<AdvancedControllableProperty> controls = aggregatedDevice.getControllableProperties();
+
+                        processDeviceAlerts(properties, dynamicStatistics, display);
+                        processDevicePowerSchedule(properties, display);
+
+                        //deviceSelectedContentSource
+                        String deviceId = aggregatedDevice.getDeviceId();
+                        processDeviceInputSources(deviceId, properties, controls, display);
+                        processDeviceBookmarks(deviceId, properties, controls, display);
+                        processDeviceAppContentSources(deviceId, properties, controls, display);
+                        processDevicePlaylistContentSources(deviceId, properties, controls, display, playlists);
+
+                        String selectedContentSource = deviceSelectedContentSource.get(deviceId);
+                        controls.add(createPreset(Constants.ControlProperties.CONTROL_CONTENT_SOURCE, Arrays.asList(Constants.SourceType.APPLICATION_NAME,
+                                Constants.SourceType.BOOKMARK_NAME, Constants.SourceType.INPUT_NAME, Constants.SourceType.PLAYLIST_NAME), selectedContentSource));
+                        properties.put(Constants.ControlProperties.CONTROL_CONTENT_SOURCE, selectedContentSource);
+
+                        processDeviceAppSubscriptions(aggregatedDevice, display);
+                        processDeviceGroups(aggregatedDevice, display);
+
+                        if (displayPropertyGroups.contains("screenshot")) {
+                            aggregatedDeviceProcessor.applyProperties(deviceProperties, deviceDetails, "ScreenshotInfo");
+                        }
+                    }
+                } finally {
+                    controlOperationsLock.unlock(displayId);
                 }
             }
         }
@@ -786,28 +814,34 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         if (available == null || available.isEmpty()) {
             return;
         }
-        ContentSource.SourceType sourceType = contentSource.getCurrent();
-        String currentValue = sourceType.getValue();
-        String currentType = sourceType.getType();
+        try {
+            ContentSource.SourceType sourceType = contentSource.getCurrent();
+            String currentValue = sourceType.getValue();
+            String currentType = sourceType.getType();
 
-        List<String> applicationIds = available.stream().map(Source::getApplicationId).collect(toList());
-        List<String> applicationLabels = available.stream().map(Source::getLabel).collect(toList());
-        boolean matchedType = Constants.SourceType.APPLICATION.equals(currentType);
-        boolean deviceContentSourceRecordMatch = Constants.SourceType.APPLICATION_NAME.equals(deviceSelectedContentSource.get(deviceId));
-        String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
-        if (matchedType || deviceContentSourceRecordMatch) {
-            properties.put(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, controlValue);
-            properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, applicationLabels.get(applicationIds.indexOf(currentValue)));
-        }
-        if (matchedType && !deviceContentSourceRecordMatch) {
-            deviceSelectedContentSource.put(deviceId, Constants.SourceType.APPLICATION_NAME);
-        }
+            List<String> applicationIds = available.stream().map(Source::getApplicationId).collect(toList());
+            List<String> applicationLabels = available.stream().map(Source::getLabel).collect(toList());
+            boolean matchedType = Constants.SourceType.APPLICATION.equals(currentType);
+            boolean deviceContentSourceRecordMatch = Constants.SourceType.APPLICATION_NAME.equals(deviceSelectedContentSource.get(deviceId));
+            String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
+            if (matchedType || deviceContentSourceRecordMatch) {
+                properties.put(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, controlValue);
+                if (matchedType) {
+                    properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, applicationLabels.get(applicationIds.indexOf(currentValue)));
+                }
+            }
+            if (matchedType && !deviceContentSourceRecordMatch) {
+                deviceSelectedContentSource.put(deviceId, Constants.SourceType.APPLICATION_NAME);
+            }
 
-        if (!matchedType) {
-            applicationIds.add(Constants.Utility.NONE_LABEL);
-            applicationLabels.add(Constants.Utility.NONE_LABEL);
+            if (!matchedType) {
+                applicationIds.add(Constants.Utility.NONE_LABEL);
+                applicationLabels.add(Constants.Utility.NONE_LABEL);
+            }
+            controls.add(createDropdown(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, applicationIds, applicationLabels, controlValue));
+        } catch (Exception e) {
+            logger.warn("Unable to process device application sources", e);
         }
-        controls.add(createDropdown(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, applicationIds, applicationLabels, controlValue));
     }
 
     /**
@@ -829,28 +863,34 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         if (playlists == null || playlists.isEmpty()) {
             return;
         }
-        ContentSource.SourceType sourceType = contentSource.getCurrent();
-        String currentValue = sourceType.getValue();
-        String currentType = sourceType.getType();
+        try {
+            ContentSource.SourceType sourceType = contentSource.getCurrent();
+            String currentValue = sourceType.getValue();
+            String currentType = sourceType.getType();
 
-        List<String> playlistIds = playlists.stream().map(Playlist::getId).collect(toList());
-        List<String> playlistTitles = playlists.stream().map(Playlist::getTitle).collect(toList());
-        boolean matchedType = Constants.SourceType.PLAYLIST.equals(currentType);
-        boolean deviceContentSourceRecordMatch = Constants.SourceType.PLAYLIST_NAME.equals(deviceSelectedContentSource.get(deviceId));
-        String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
-        if (matchedType || deviceContentSourceRecordMatch) {
-            properties.put(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, controlValue);
-            properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, playlistTitles.get(playlistIds.indexOf(currentValue)));
-        }
-        if (matchedType && !deviceContentSourceRecordMatch) {
-            deviceSelectedContentSource.put(deviceId, Constants.SourceType.PLAYLIST_NAME);
-        }
+            List<String> playlistIds = playlists.stream().map(Playlist::getId).collect(toList());
+            List<String> playlistTitles = playlists.stream().map(Playlist::getTitle).collect(toList());
+            boolean matchedType = Constants.SourceType.PLAYLIST.equals(currentType);
+            boolean deviceContentSourceRecordMatch = Constants.SourceType.PLAYLIST_NAME.equals(deviceSelectedContentSource.get(deviceId));
+            String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
+            if (matchedType || deviceContentSourceRecordMatch) {
+                properties.put(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, controlValue);
+                if (matchedType) {
+                    properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, playlistTitles.get(playlistIds.indexOf(currentValue)));
+                }
+            }
+            if (matchedType && !deviceContentSourceRecordMatch) {
+                deviceSelectedContentSource.put(deviceId, Constants.SourceType.PLAYLIST_NAME);
+            }
 
-        if (!matchedType) {
-            playlistIds.add(Constants.Utility.NONE_LABEL);
-            playlistTitles.add(Constants.Utility.NONE_LABEL);
+            if (!matchedType) {
+                playlistIds.add(Constants.Utility.NONE_LABEL);
+                playlistTitles.add(Constants.Utility.NONE_LABEL);
+            }
+            controls.add(createDropdown(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, playlistIds, playlistTitles, controlValue));
+        } catch (Exception e) {
+            logger.warn("Unable to process device playlist options", e);
         }
-        controls.add(createDropdown(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, playlistIds, playlistTitles, controlValue));
     }
 
     /**
@@ -873,25 +913,31 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         if (available == null || available.isEmpty()) {
             return;
         }
-        List<String> contentSourceOptions = available.stream().map(Source::getSource).collect(toList());
-        ContentSource.SourceType sourceType = contentSource.getCurrent();
-        String currentValue = sourceType.getValue();
-        String currentType = sourceType.getType();
+        try {
+            List<String> contentSourceOptions = available.stream().map(Source::getSource).collect(toList());
+            ContentSource.SourceType sourceType = contentSource.getCurrent();
+            String currentValue = sourceType.getValue();
+            String currentType = sourceType.getType();
 
-        boolean matchedType = Constants.SourceType.INPUT.equals(currentType);
-        boolean deviceContentSourceRecordMatch = Constants.SourceType.INPUT_NAME.equals(deviceSelectedContentSource.get(deviceId));
-        String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
-        if (matchedType || deviceContentSourceRecordMatch) {
-            properties.put(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, controlValue);
-            properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, currentValue);
+            boolean matchedType = Constants.SourceType.INPUT.equals(currentType);
+            boolean deviceContentSourceRecordMatch = Constants.SourceType.INPUT_NAME.equals(deviceSelectedContentSource.get(deviceId));
+            String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
+            if (matchedType || deviceContentSourceRecordMatch) {
+                properties.put(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, controlValue);
+                if (matchedType) {
+                    properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, currentValue);
+                }
+            }
+            if (matchedType && !deviceContentSourceRecordMatch) {
+                deviceSelectedContentSource.put(deviceId, Constants.SourceType.INPUT_NAME);
+            }
+            if (!matchedType) {
+                contentSourceOptions.add(Constants.Utility.NONE_LABEL);
+            }
+            controls.add(createDropdown(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, contentSourceOptions, contentSourceOptions, controlValue));
+        } catch (Exception e) {
+            logger.warn("Unable to process device video inputs", e);
         }
-        if (matchedType && !deviceContentSourceRecordMatch) {
-            deviceSelectedContentSource.put(deviceId, Constants.SourceType.INPUT_NAME);
-        }
-        if (!matchedType) {
-            contentSourceOptions.add(Constants.Utility.NONE_LABEL);
-        }
-        controls.add(createDropdown(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, contentSourceOptions, contentSourceOptions, controlValue));
     }
 
     /**
@@ -992,40 +1038,45 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         if (data == null) {
             return;
         }
-
-        int index = 0;
-        List<String> bookmarkIds = new ArrayList<>();
-        for (String bookmark : data) {
-            if (StringUtils.isNotNullOrEmpty(bookmark)) {
-                bookmarkIds.add(String.valueOf(index));
-            } else {
-                bookmarkIds.add(EMPTY);
+        try {
+            int index = 0;
+            List<String> bookmarkIds = new ArrayList<>();
+            for (String bookmark : data) {
+                if (StringUtils.isNotNullOrEmpty(bookmark)) {
+                    bookmarkIds.add(String.valueOf(index));
+                } else {
+                    bookmarkIds.add(EMPTY);
+                }
+                index++;
             }
-            index++;
-        }
-        ContentSource contentSource = deviceNode.getContentSource();
-        if (contentSource == null) {
-            return;
-        }
-        ContentSource.SourceType sourceType = contentSource.getCurrent();
-        String currentValue = sourceType.getValue();
-        String currentType = sourceType.getType();
+            ContentSource contentSource = deviceNode.getContentSource();
+            if (contentSource == null) {
+                return;
+            }
+            ContentSource.SourceType sourceType = contentSource.getCurrent();
+            String currentValue = sourceType.getValue();
+            String currentType = sourceType.getType();
 
-        boolean matchedType = Constants.SourceType.BOOKMARK.equals(currentType);
-        boolean deviceContentSourceRecordMatch = Constants.SourceType.BOOKMARK_NAME.equals(deviceSelectedContentSource.get(deviceId));
-        String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
-        if (matchedType || deviceContentSourceRecordMatch) {
-            properties.put(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, controlValue);
-            properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, data.get(bookmarkIds.indexOf(currentValue)));
+            boolean matchedType = Constants.SourceType.BOOKMARK.equals(currentType);
+            boolean deviceContentSourceRecordMatch = Constants.SourceType.BOOKMARK_NAME.equals(deviceSelectedContentSource.get(deviceId));
+            String controlValue = matchedType ? currentValue : Constants.Utility.NONE_LABEL;
+            if (matchedType || deviceContentSourceRecordMatch) {
+                properties.put(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, controlValue);
+                if (matchedType) {
+                    properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, data.get(bookmarkIds.indexOf(currentValue)));
+                }
+            }
+            if (matchedType && !deviceContentSourceRecordMatch) {
+                deviceSelectedContentSource.put(deviceId, Constants.SourceType.BOOKMARK_NAME);
+            }
+            if (!matchedType) {
+                bookmarkIds.add(Constants.Utility.NONE_LABEL);
+                data.add(Constants.Utility.NONE_LABEL);
+            }
+            controls.add(createDropdown(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, bookmarkIds, data, controlValue));
+        } catch (Exception e) {
+            logger.warn("Unable to process device bookmark sources", e);
         }
-        if (matchedType && !deviceContentSourceRecordMatch) {
-            deviceSelectedContentSource.put(deviceId, Constants.SourceType.BOOKMARK_NAME);
-        }
-        if (!matchedType) {
-            bookmarkIds.add(Constants.Utility.NONE_LABEL);
-            data.add(Constants.Utility.NONE_LABEL);
-        }
-        controls.add(createDropdown(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, bookmarkIds, data, controlValue));
     }
 
     /**
@@ -1062,9 +1113,9 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Change active content source type
      *
      * @param deviceId to change content source type for
-     * @param value new value of the content source type
-     * */
-    private void commandChangeContentSourceType(String deviceId, String value){
+     * @param value    new value of the content source type
+     */
+    private void commandChangeContentSourceType(String deviceId, String value) {
         AggregatedDevice aggregatedDevice = aggregatedDevices.get(deviceId);
         if (aggregatedDevice == null) {
             return;
@@ -1094,6 +1145,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 break;
         }
     }
+
     /**
      * Reboot command execution
      *
@@ -1363,16 +1415,16 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                     advancedControllableProperty.setTimestamp(currentDate);
                     AdvancedControllableProperty.ControllableType type = advancedControllableProperty.getType();
 
-                    if (type instanceof  AdvancedControllableProperty.DropDown) {
-                        String activeLabel = updateNoneControlEntriesAndReturnLabel((AdvancedControllableProperty.DropDown)type, value,false);
+                    if (type instanceof AdvancedControllableProperty.DropDown) {
+                        String activeLabel = updateNoneControlEntriesAndReturnLabel((AdvancedControllableProperty.DropDown) type, value, false);
 
                         properties.put(Constants.MonitoredProperties.CONTENT_SOURCE, activeLabel);
                         deviceControls.stream().filter(control -> control.getName().startsWith(Constants.ControlProperties.CONTENT_SOURCE_NAME + "#Source") && !control.getName().equals(name)).forEach(control -> {
                             control.setTimestamp(currentDate);
                             control.setValue(Constants.Utility.NONE_LABEL);
                             AdvancedControllableProperty.ControllableType externalType = control.getType();
-                            if (externalType instanceof  AdvancedControllableProperty.DropDown) {
-                                updateNoneControlEntriesAndReturnLabel((AdvancedControllableProperty.DropDown)externalType, value, true);
+                            if (externalType instanceof AdvancedControllableProperty.DropDown) {
+                                updateNoneControlEntriesAndReturnLabel((AdvancedControllableProperty.DropDown) externalType, value, true);
                             }
                         });
                     }
@@ -1386,12 +1438,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Check and update dropdown for "-NONE-" entry and make sure it's there whenever needed, to make the
      * user experience smoother. Method returns selected option label, if available
      *
-     * @param dropDown to update options for
-     * @param value value of the control property to retrieve label by
+     * @param dropDown         to update options for
+     * @param value            value of the control property to retrieve label by
      * @param updatedSelection new dropdown selection
-     *
      * @return String value of control option label
-     * */
+     */
     private String updateNoneControlEntriesAndReturnLabel(AdvancedControllableProperty.DropDown dropDown, String value, boolean updatedSelection) {
         List<String> newLabels = Arrays.stream(dropDown.getLabels()).collect(toList());
         List<String> newOptions = Arrays.stream(dropDown.getOptions()).collect(toList());
