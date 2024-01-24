@@ -28,6 +28,7 @@ public class PhilipsWaveAggregatorCommunicatorTest {
 
     @Test
     public void retrieveDevicesListTest() throws Exception {
+        philipsWaveAggregatorCommunicator.setDisplayPropertyGroups("screenshot");
         philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
         Thread.sleep(30000);
         philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
@@ -41,7 +42,6 @@ public class PhilipsWaveAggregatorCommunicatorTest {
     @Test
     public void retrieveDevicesListWithTypeFilterCorrectTest() throws Exception {
         philipsWaveAggregatorCommunicator.setCustomerHandleFilter(null);
-        philipsWaveAggregatorCommunicator.setDeviceTypeFilter("SIGNAGE");
         philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
         Thread.sleep(30000);
         philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
@@ -54,7 +54,6 @@ public class PhilipsWaveAggregatorCommunicatorTest {
     @Test
     public void retrieveDevicesListWithTypeFilterIncorrectTest() throws Exception {
         philipsWaveAggregatorCommunicator.setCustomerHandleFilter(null);
-        philipsWaveAggregatorCommunicator.setDeviceTypeFilter("__SIGNAGE__");
         philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
         Thread.sleep(30000);
         philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
@@ -66,20 +65,18 @@ public class PhilipsWaveAggregatorCommunicatorTest {
 
     @Test
     public void retrieveDevicesListWithHandleFilterCorrectTest() throws Exception {
-        philipsWaveAggregatorCommunicator.setDeviceTypeFilter(null);
         philipsWaveAggregatorCommunicator.setCustomerHandleFilter("example-customer");
-        philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
-        Thread.sleep(30000);
-        philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
-        Thread.sleep(30000);
         List<AggregatedDevice> deviceList = philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
+        Thread.sleep(30000);
+        deviceList = philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
+        Thread.sleep(30000);
+        deviceList = philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
         Thread.sleep(30000);
         Assertions.assertFalse(deviceList.isEmpty());
     }
 
     @Test
     public void retrieveDevicesListWithHandleFilterIncorrectTest() throws Exception {
-        philipsWaveAggregatorCommunicator.setDeviceTypeFilter(null);
         philipsWaveAggregatorCommunicator.setCustomerHandleFilter("asdasdasd");
         philipsWaveAggregatorCommunicator.retrieveMultipleStatistics();
         Thread.sleep(30000);
@@ -98,7 +95,7 @@ public class PhilipsWaveAggregatorCommunicatorTest {
         ControllableProperty controllableProperty = new ControllableProperty();
         controllableProperty.setValue("10.0");
         controllableProperty.setProperty("Audio#Volume");
-        controllableProperty.setDeviceId("887fbe07-f3a5-4657-b4c0-0083945bb365");
+        controllableProperty.setDeviceId("b2d87ebd-675a-44e8-b2d8-47cd4ed4e2a5");
 
         philipsWaveAggregatorCommunicator.controlProperty(controllableProperty);
     }
