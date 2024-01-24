@@ -247,6 +247,28 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
     }
 
     /**
+     * Retrieves {@link #deviceTypeFilter}
+     *
+     * @return value of {@link #deviceTypeFilter}
+     */
+    public String getDeviceTypeFilter() {
+        return String.join(",", deviceTypeFilter);
+    }
+
+    /**
+     * Sets {@link #deviceTypeFilter} value
+     *
+     * @param deviceTypeFilter new value of {@link #deviceTypeFilter}
+     */
+    public void setDeviceTypeFilter(String deviceTypeFilter) {
+        if (deviceTypeFilter == null) {
+            this.deviceTypeFilter = null;
+            return;
+        }
+        this.deviceTypeFilter = Arrays.stream(deviceTypeFilter.split(",")).map(String::trim).collect(toList());
+    }
+
+    /**
      * Retrieves {@link #displayPropertyGroups}
      *
      * @return value of {@link #displayPropertyGroups}
@@ -313,6 +335,11 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      * Customer handle filter. The devices are only retrieved for the handle specified.
      */
     private List<String> customerHandleFilter = new ArrayList<>();
+
+    /**
+     * Device type filter. The devices are only retrieved/updated if type is matched.
+     */
+    private List<String> deviceTypeFilter = new ArrayList<>();
 
     /**
      * List of propery groups to be displayed. Current supported values: screenshot
@@ -659,6 +686,10 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
             JsonNode customerDisplaysMeta = doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_METADATA_REQUEST, handle), JsonNode.class);
             List<AggregatedDevice> deviceList = aggregatedDeviceProcessor.extractDevices(customerDisplaysMeta.at(Constants.GraphQLProperties.GQL_PATH_CUSTOMER_BY_HANDLE));
 
+            if (deviceTypeFilter != null && !deviceTypeFilter.isEmpty()) {
+                deviceList.removeIf(aggregatedDevice -> !deviceTypeFilter.contains(aggregatedDevice.getProperties().get("DisplayType")));
+            }
+
             List<String> retrievedDeviceIds = new ArrayList<>();
             deviceList.forEach(device -> {
                 String deviceId = device.getDeviceId();
@@ -704,6 +735,9 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                     if (customerByHandle != null) {
                         List<Display> displaysData = customerByHandle.getDisplays();
                         playlists.addAll(customerByHandle.getPlaylists());
+                        if (deviceTypeFilter != null && !deviceTypeFilter.isEmpty()) {
+                            displaysData.removeIf(display -> display.getPlatform() == null && !deviceTypeFilter.contains(display.getPlatform().getType()));
+                        }
 
                         displaysData.forEach(display -> displayDetails.put(display.getId(), display));
                     }
@@ -722,6 +756,10 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 controlOperationsLock.tryLock(displayId);
                 try {
                     AggregatedDevice aggregatedDevice = aggregatedDevices.get(displayId);
+                    if (aggregatedDevice == null) {
+                        logger.debug("Unable to find cached display device with id " + displayId);
+                        return;
+                    }
                     Map<String, String> deviceProperties = aggregatedDevice.getProperties();
                     aggregatedDeviceProcessor.applyProperties(aggregatedDevice, deviceDetails, "WaveDevice");
 
