@@ -14,12 +14,12 @@ models:
         deviceModel: at("/commercialTypeNumber")
         deviceOnline: at("/presence/connected")?.asBoolean()
       properties:
-        DisplayType: at("/displayType")
+        DisplayType: at("/platform/type")
   - model:
       name: WaveDevice
-      filter: get("serialNumber") == null && get("displayType") != null
+      filter: get("serialNumber") == null && get("platform")?.get("type") != null
       properties:
-        DisplayType: at("/displayType")
+        DisplayType: at("/platform/type")
         AgentVersion: at("/agentVersion")
         CommercialTypeNumber: at("/commercialTypeNumber")
         AgentReleaseChannel: at("/agentReleaseChannel/reported")
@@ -151,7 +151,7 @@ models:
           value: at("/alias")
   - model:
       name: ScreenshotInfo
-      filter: get("serialNumber") == null && get("displayType") != null
+      filter: get("serialNumber") == null && get("platform")?.get("type") != null
       properties:
         # Screenshot info
         Screenshot#CreatedAt: at("/screenshot/createdAt")
