@@ -17,7 +17,7 @@ import java.util.List;
  * */
 public class Display {
     private String id;
-    private String displayType;
+    private Platform platform;
     private PowerSchedule powerSchedule;
     private List<Alert> alerts;
     private List<Group> groups;
@@ -26,21 +26,21 @@ public class Display {
     private ContentSource contentSource;
 
     /**
-     * Retrieves {@link #displayType}
+     * Retrieves {@link #platform}
      *
-     * @return value of {@link #displayType}
+     * @return value of {@link #platform}
      */
-    public String getDisplayType() {
-        return displayType;
+    public Platform getPlatform() {
+        return platform;
     }
 
     /**
-     * Sets {@link #displayType} value
+     * Sets {@link #platform} value
      *
-     * @param displayType new value of {@link #displayType}
+     * @param platform new value of {@link #platform}
      */
-    public void setDisplayType(String displayType) {
-        this.displayType = displayType;
+    public void setPlatform(Platform platform) {
+        this.platform = platform;
     }
 
     /**
