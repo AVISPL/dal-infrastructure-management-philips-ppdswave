@@ -736,7 +736,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                         List<Display> displaysData = customerByHandle.getDisplays();
                         playlists.addAll(customerByHandle.getPlaylists());
                         if (deviceTypeFilter != null && !deviceTypeFilter.isEmpty()) {
-                            displaysData.removeIf(display -> !deviceTypeFilter.contains(display.getDisplayType()));
+                            displaysData.removeIf(display -> display.getPlatform() == null && !deviceTypeFilter.contains(display.getPlatform().getType()));
                         }
 
                         displaysData.forEach(display -> displayDetails.put(display.getId(), display));
@@ -756,6 +756,10 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 controlOperationsLock.tryLock(displayId);
                 try {
                     AggregatedDevice aggregatedDevice = aggregatedDevices.get(displayId);
+                    if (aggregatedDevice == null) {
+                        logger.debug("Unable to find cached display device with id " + displayId);
+                        return;
+                    }
                     Map<String, String> deviceProperties = aggregatedDevice.getProperties();
                     aggregatedDeviceProcessor.applyProperties(aggregatedDevice, deviceDetails, "WaveDevice");
 
