@@ -3,6 +3,36 @@
  */
 package com.avispl.symphony.dal.communicator.ppdswave;
 
+import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createPreset;
+import static java.util.stream.Collectors.toList;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.util.CollectionUtils;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import javax.security.auth.login.FailedLoginException;
+
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
@@ -17,38 +47,23 @@ import com.avispl.symphony.dal.aggregator.parser.PropertiesMapping;
 import com.avispl.symphony.dal.aggregator.parser.PropertiesMappingParser;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.communicator.ppdswave.concurrent.DeviceLock;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.CustomerByHandle;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.Data;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.ReportedDataWrapper;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.ResponseWrapper;
-import com.avispl.symphony.dal.communicator.ppdswave.dto.display.*;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Alert;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Bookmarks;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Display;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Group;
+import com.avispl.symphony.dal.communicator.ppdswave.dto.display.Playlist;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.LatestJob;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.PowerSchedule;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.Schedule;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.power.TimeBlock;
-import com.avispl.symphony.dal.communicator.ppdswave.dto.CustomerByHandle;
-import com.avispl.symphony.dal.communicator.ppdswave.dto.Data;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.source.ContentSource;
 import com.avispl.symphony.dal.communicator.ppdswave.dto.display.source.Source;
 import com.avispl.symphony.dal.communicator.ppdswave.error.PPDSWaveCommandExecutionException;
 import com.avispl.symphony.dal.util.StringUtils;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.util.CollectionUtils;
-
-import javax.security.auth.login.FailedLoginException;
-import java.io.*;
-import java.net.ConnectException;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
-
-import static com.avispl.symphony.dal.communicator.ppdswave.Constants.Utility.EMPTY;
-import static com.avispl.symphony.dal.communicator.ppdswave.Constants.Utility.EMPTY_STRING;
-import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createPreset;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Philips Wave Communicator to retrieve information about Philips Wave Devices.
@@ -140,6 +155,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 }
 
                 boolean retrievedWithErrors = false;
+                long startCycle = System.currentTimeMillis();
                 try {
                     if (logger.isDebugEnabled()) {
                         logger.debug("Fetching SDVoE devices list");
@@ -168,10 +184,17 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 if (!inProgress) {
                     break mainloop;
                 }
-                // We don't want to fetch devices statuses too often, so by default it's currentTime + 30s
+                // We don't want to fetch devices statuses too often, so by default it's currentTime + (monitoring rate(s) * 60s)
                 // otherwise - the variable is reset by the retrieveMultipleStatistics() call, which
                 // launches devices detailed statistics collection
-                nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + 30000;
+                // If getMonitoringRate() isn't available, it falls back to 60s.
+                try {
+                    nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + (getMonitoringRate() * 60000L);
+                } catch (NoSuchMethodError error) {
+                    nextDevicesCollectionIterationTimestamp = System.currentTimeMillis() + 60000L;
+                    logger.error("Unsupported feature: getMonitoringRate isn't available on current Cloud Connector version.", error);
+                }
+                lastMonitoringCycleDuration = Math.max((System.currentTimeMillis() - startCycle) / 1000, 1L);
 
                 if (logger.isDebugEnabled()) {
                     logger.debug("Finished collecting devices statistics cycle at " + new Date());
@@ -421,6 +444,9 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     AggregatedDeviceProcessor aggregatedDeviceProcessor;
 
+    private final ReentrantLock reentrantLock = new ReentrantLock();
+    private Long lastMonitoringCycleDuration = 1L;
+
     public PhilipsWaveAggregatorCommunicator() {
     }
 
@@ -554,23 +580,37 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
     @Override
     public List<Statistics> getMultipleStatistics() throws Exception {
-        Map<String, String> apiProperties = new HashMap<>();
-        ExtendedStatistics extendedStatistics = new ExtendedStatistics();
+        this.reentrantLock.lock();
+        try {
+            Map<String, String> apiProperties = new HashMap<>();
+            long adapterUptime = System.currentTimeMillis() - adapterInitializationTimestamp;
+            apiProperties.put("AdapterVersion", adapterProperties.getProperty("aggregator.version"));
+            apiProperties.put("AdapterBuildDate", adapterProperties.getProperty("aggregator.build.date"));
+            apiProperties.put("AdapterUptime", normalizeUptime(adapterUptime / 1000));
+            apiProperties.put("AdapterUptime(min)", String.valueOf(adapterUptime / (1000 * 60)));
+            try {
+                apiProperties.put("MonitoringCycleInterval(min)", String.valueOf(this.getMonitoringRate()));
+            } catch (NoSuchMethodError error) {
+                logger.warn("Unsupported feature: getMonitoringRate isn't available on current Cloud Connector version.", error);
+            }
 
-        apiProperties.put("AdapterVersion", adapterProperties.getProperty("aggregator.version"));
-        apiProperties.put("AdapterBuildDate", adapterProperties.getProperty("aggregator.build.date"));
-        apiProperties.put("AdapterUptime", normalizeUptime((System.currentTimeMillis() - adapterInitializationTimestamp) / 1000));
+            Map<String, String> dynamicStatistics = new HashMap<>();
+            apiProperties.put("LastMonitoringCycleDuration(sec)", String.valueOf(this.lastMonitoringCycleDuration));
+            apiProperties.put("MonitoredDevicesTotal", String.valueOf(this.aggregatedDevices.values().size()));
 
-        extendedStatistics.setStatistics(apiProperties);
-        return Collections.singletonList(extendedStatistics);
+            ExtendedStatistics extendedStatistics = new ExtendedStatistics();
+            extendedStatistics.setStatistics(apiProperties);
+            extendedStatistics.setDynamicStatistics(dynamicStatistics);
+            return Collections.singletonList(extendedStatistics);
+        } finally {
+            this.reentrantLock.unlock();
+        }
     }
 
     @Override
     public List<AggregatedDevice> retrieveMultipleStatistics() throws Exception {
-        if (!latestErrors.isEmpty()) {
-            if (latestErrors.containsKey("403") || latestErrors.containsKey("401")) {
-                throw new FailedLoginException("Authorization failed, please check API Token");
-            }
+        if (!latestErrors.isEmpty() && (latestErrors.containsKey("403") || latestErrors.containsKey("401"))) {
+            throw new FailedLoginException("Authorization failed, please check API Token");
         }
         long currentTimestamp = System.currentTimeMillis();
         nextDevicesCollectionIterationTimestamp = currentTimestamp;
@@ -606,47 +646,6 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
     }
 
     /**
-     * @return pingTimeout value if host is not reachable within
-     * the pingTimeout, a ping time in milliseconds otherwise
-     * if ping is 0ms it's rounded up to 1ms to avoid IU issues on Symphony portal
-     * @throws IOException
-     */
-    @Override
-    public int ping() throws IOException {
-        long pingResultTotal = 0L;
-
-        for (int i = 0; i < this.getPingAttempts(); i++) {
-            long startTime = System.currentTimeMillis();
-
-            try (Socket puSocketConnection = new Socket(this.getHost(), this.getPort())) {
-                puSocketConnection.setSoTimeout(this.getPingTimeout());
-
-                if (puSocketConnection.isConnected()) {
-                    long endTime = System.currentTimeMillis();
-                    long pingResult = endTime - startTime;
-                    pingResultTotal += pingResult;
-                    if (this.logger.isTraceEnabled()) {
-                        this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, this.getHost(), this.getPort(), pingResult));
-                    }
-                } else {
-                    if (this.logger.isDebugEnabled()) {
-                        this.logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", this.getHost(), this.getPingTimeout()));
-                    }
-                    return this.getPingTimeout();
-                }
-            } catch (SocketTimeoutException | ConnectException tex) {
-                throw new RuntimeException("Socket connection timed out", tex);
-            } catch (Exception e) {
-                if (this.logger.isWarnEnabled()) {
-                    this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
-                }
-                return this.getPingTimeout();
-            }
-        }
-        return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
-    }
-
-    /**
      * Fetch devices metadata (deviceId, alias and serial, to back up the initial provisioning process)
      * The process is executed once per {@link #validDeviceMetaDataRetrievalPeriodTimestamp} or whenever
      * {@link #aggregatedDevices} is empty (once every 30 seconds)
@@ -664,7 +663,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         }
         validDeviceMetaDataRetrievalPeriodTimestamp = currentTimestamp + deviceMetaDataRetrievalTimeout;
 
-        JsonNode httpResponse = doPost(EMPTY_STRING, Constants.GraphQLRequests.MonitoringRequests.CUSTOMERS_REQUEST, JsonNode.class);
+        JsonNode httpResponse = doPost(Constants.Utility.EMPTY_STRING, Constants.GraphQLRequests.MonitoringRequests.CUSTOMERS_REQUEST, JsonNode.class);
         ArrayNode customers = (ArrayNode) httpResponse.at(Constants.GraphQLProperties.GQL_PATH_CUSTOMERS);
 
         if (customers != null && !customers.isEmpty()) {
@@ -683,7 +682,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         }
 
         for (String handle : customerHandles) {
-            JsonNode customerDisplaysMeta = doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_METADATA_REQUEST, handle), JsonNode.class);
+            JsonNode customerDisplaysMeta = doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_METADATA_REQUEST, handle), JsonNode.class);
             List<AggregatedDevice> deviceList = aggregatedDeviceProcessor.extractDevices(customerDisplaysMeta.at(Constants.GraphQLProperties.GQL_PATH_CUSTOMER_BY_HANDLE));
 
             if (deviceTypeFilter != null && !deviceTypeFilter.isEmpty()) {
@@ -724,8 +723,9 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
             logger.debug("Process devices details, devices to update: " + aggregatedDevices.keySet());
         }
         for (String handle : customerHandles) {
-            JsonNode customerDisplaysBasic = doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_DETAILS_REQUEST_BASIC, handle), JsonNode.class);
-            ResponseWrapper customerDisplaysDetailed = doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_DETAILS_REQUEST_DETAILED, handle), ResponseWrapper.class);
+            JsonNode customerDisplaysBasic = doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_DETAILS_REQUEST_BASIC, handle), JsonNode.class);
+            ResponseWrapper customerDisplaysDetailed = doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.MonitoringRequests.DISPLAYS_DETAILS_REQUEST_DETAILED, handle),
+                ResponseWrapper.class);
             Map<String, Display> displayDetails = new HashMap<>();
             List<Playlist> playlists = new ArrayList<>();
             if (customerDisplaysDetailed != null) {
@@ -736,7 +736,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                         List<Display> displaysData = customerByHandle.getDisplays();
                         playlists.addAll(customerByHandle.getPlaylists());
                         if (deviceTypeFilter != null && !deviceTypeFilter.isEmpty()) {
-                            displaysData.removeIf(display -> display.getPlatform() == null && !deviceTypeFilter.contains(display.getPlatform().getType()));
+                            displaysData.removeIf(display -> display.getPlatform() == null || !deviceTypeFilter.contains(display.getPlatform().getType()));
                         }
 
                         displaysData.forEach(display -> displayDetails.put(display.getId(), display));
@@ -1049,7 +1049,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                 if (StringUtils.isNotNullOrEmpty(bookmark)) {
                     bookmarkIds.add(String.valueOf(index));
                 } else {
-                    bookmarkIds.add(EMPTY);
+                    bookmarkIds.add(Constants.Utility.EMPTY);
                 }
                 index++;
             }
@@ -1134,16 +1134,16 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
 
         switch (value) {
             case Constants.SourceType.INPUT_NAME:
-                properties.put(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, EMPTY_STRING);
+                properties.put(Constants.ControlProperties.CONTROL_VIDEO_INPUT_SOURCE, Constants.Utility.EMPTY_STRING);
                 break;
             case Constants.SourceType.APPLICATION_NAME:
-                properties.put(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, EMPTY_STRING);
+                properties.put(Constants.ControlProperties.CONTROL_APPLICATION_SOURCE, Constants.Utility.EMPTY_STRING);
                 break;
             case Constants.SourceType.PLAYLIST_NAME:
-                properties.put(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, EMPTY_STRING);
+                properties.put(Constants.ControlProperties.CONTROL_PLAYLIST_SOURCE, Constants.Utility.EMPTY_STRING);
                 break;
             case Constants.SourceType.BOOKMARK_NAME:
-                properties.put(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, EMPTY_STRING);
+                properties.put(Constants.ControlProperties.CONTROL_BOOKMARK_SOURCE, Constants.Utility.EMPTY_STRING);
                 break;
             default:
                 break;
@@ -1158,7 +1158,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandReboot(String displayId) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.REBOOT, displayId), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.REBOOT, displayId), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException("Unable to execute Reboot command for the device with id " + displayId, ex);
         }
@@ -1173,7 +1173,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeMuteStatus(String displayId, String muteStatus) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.MUTE, displayId, muteStatus), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.MUTE, displayId, muteStatus), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Mute status change command for the device with id %s with value %s", displayId, muteStatus), ex);
         }
@@ -1188,7 +1188,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeVolume(String displayId, String volumeLevel) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.VOLUME, displayId, Float.parseFloat(volumeLevel)), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.VOLUME, displayId, Float.parseFloat(volumeLevel)), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Volume change command for the device with id %s with value %s", displayId, volumeLevel), ex);
         }
@@ -1203,7 +1203,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeBrightness(String displayId, String brightnessLevel) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.BRIGHTNESS, displayId, Float.parseFloat(brightnessLevel)), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.BRIGHTNESS, displayId, Float.parseFloat(brightnessLevel)), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Brightness change command for the device with id %s with value %s", displayId, brightnessLevel), ex);
         }
@@ -1219,7 +1219,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
     private void commandChangePowerState(String displayId, String powerState) throws Exception {
         String powerStateValue = "1".equals(powerState) ? "ON" : "STANDBY";
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.POWER, displayId, powerStateValue), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.POWER, displayId, powerStateValue), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Power state change command for the device with id %s with value %s", displayId, powerState), ex);
         }
@@ -1234,7 +1234,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeOrientation(String displayId, String orientationState) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ORIENTATION, displayId, orientationState), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ORIENTATION, displayId, orientationState), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Orientation state change command for the device with id %s with value %s", displayId, orientationState), ex);
         }
@@ -1249,7 +1249,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeInput(String displayId, String inputState) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.INPUT, displayId, inputState), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.INPUT, displayId, inputState), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Input change command for the device with id %s with value %s", displayId, inputState), ex);
         }
@@ -1264,7 +1264,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangePlaylist(String displayId, String inputState) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.PLAYLIST, displayId, inputState), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.PLAYLIST, displayId, inputState), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Input change command for the device with id %s with value %s", displayId, inputState), ex);
         }
@@ -1279,7 +1279,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeApplication(String displayId, String inputState) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.APPLICATION, displayId, inputState), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.APPLICATION, displayId, inputState), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Input change command for the device with id %s with value %s", displayId, inputState), ex);
         }
@@ -1294,7 +1294,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeBookmark(String displayId, String inputState) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.BOOKMARK, displayId, Integer.parseInt(inputState)), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.BOOKMARK, displayId, Integer.parseInt(inputState)), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Input change command for the device with id %s with value %s", displayId, inputState), ex);
         }
@@ -1308,7 +1308,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandTakeScreenshot(String displayId) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.SCREENSHOT, displayId), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.SCREENSHOT, displayId), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException("Unable to execute Screenshot capture change command for the device with id " + displayId, ex);
         }
@@ -1323,7 +1323,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeIRMode(String displayId, String irMode) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.IR_MODE, displayId, irMode), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.IR_MODE, displayId, irMode), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute IR Mode change command for the device with id %s with value %s", displayId, irMode), ex);
         }
@@ -1338,7 +1338,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeKeyboardMode(String displayId, String keyboardState) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.KEYBOARD_MODE, displayId, keyboardState), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.KEYBOARD_MODE, displayId, keyboardState), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Keyboard control mode change command for the device with id %s with value %s", displayId, keyboardState), ex);
         }
@@ -1353,7 +1353,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeLedColor(String displayId, String ledColor) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.LED_COLOR, displayId, ledColor), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.LED_COLOR, displayId, ledColor), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute LED Strip Color change command for the device with id %s with value %s", displayId, ledColor), ex);
         }
@@ -1368,7 +1368,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangePortsControlState(String displayId, String controlState) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.PORTS_CONTROL, displayId, controlState), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.PORTS_CONTROL, displayId, controlState), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Ports control state change command for the device with id %s with value %s", displayId, controlState), ex);
         }
@@ -1383,7 +1383,7 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
      */
     private void commandChangeAlias(String displayId, String aliasValue) throws Exception {
         try {
-            doPost(EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ALIAS, displayId, aliasValue), JsonNode.class);
+            doPost(Constants.Utility.EMPTY_STRING, String.format(Constants.GraphQLRequests.ControlRequest.ALIAS, displayId, aliasValue), JsonNode.class);
         } catch (Exception ex) {
             throw new PPDSWaveCommandExecutionException(String.format("Unable to execute Alias change command for the device with id %s with value %s", displayId, aliasValue), ex);
         }
@@ -1481,13 +1481,12 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
     }
 
     /**
-     * Uptime is received in seconds, need to normalize it and make it human readable, like
-     * 1 day(s) 5 hour(s) 12 minute(s) 55 minute(s)
+     * Uptime is received in seconds, need to normalize it and make it human-readable, like 1 d 5 hr 12 min 55 sec.
      * Incoming parameter is may have a decimal point, so in order to safely process this - it's rounded first.
      * We don't need to add a segment of time if it's 0.
      *
      * @param uptimeSeconds value in seconds
-     * @return string value of format 'x day(s) x hour(s) x minute(s) x minute(s)'
+     * @return string value of format 'x d x hr x min x sec'
      */
     private String normalizeUptime(long uptimeSeconds) {
         StringBuilder normalizedUptime = new StringBuilder();
@@ -1498,16 +1497,16 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
         long days = uptimeSeconds / 86400;
 
         if (days > 0) {
-            normalizedUptime.append(days).append(" day(s) ");
+            normalizedUptime.append(days).append(" d ");
         }
         if (hours > 0) {
-            normalizedUptime.append(hours).append(" hour(s) ");
+            normalizedUptime.append(hours).append(" hr ");
         }
         if (minutes > 0) {
-            normalizedUptime.append(minutes).append(" minute(s) ");
+            normalizedUptime.append(minutes).append(" min ");
         }
-        if (seconds > 0) {
-            normalizedUptime.append(seconds).append(" second(s)");
+        if (seconds > 0 || normalizedUptime.isEmpty()) {
+            normalizedUptime.append(seconds).append(" sec");
         }
         return normalizedUptime.toString().trim();
     }
