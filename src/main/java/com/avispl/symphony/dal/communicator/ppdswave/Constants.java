@@ -34,7 +34,6 @@ public interface Constants {
         String EMPTY = "Empty";
         String NONE_LABEL = "-NONE-";
         String NONE = "None";
-        String COLON_CONTENT = "%s:%s";
     }
     /** Source types constants */
     interface SourceType {
@@ -46,7 +45,6 @@ public interface Constants {
         String BOOKMARK_NAME = "BOOKMARK";
         String INPUT_NAME = "INPUT";
         String PLAYLIST_NAME = "PLAYLIST";
-        String PREFIX = "Other:";
     }
     /** Control properties */
     interface ControlProperties {
