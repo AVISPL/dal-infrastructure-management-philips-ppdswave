@@ -595,8 +595,8 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
             }
 
             Map<String, String> dynamicStatistics = new HashMap<>();
-            apiProperties.put("LastMonitoringCycleDuration(sec)", String.valueOf(this.lastMonitoringCycleDuration));
-            apiProperties.put("MonitoredDevicesTotal", String.valueOf(this.aggregatedDevices.values().size()));
+            dynamicStatistics.put("LastMonitoringCycleDuration(sec)", String.valueOf(this.lastMonitoringCycleDuration));
+            dynamicStatistics.put("MonitoredDevicesTotal", String.valueOf(this.aggregatedDevices.values().size()));
 
             ExtendedStatistics extendedStatistics = new ExtendedStatistics();
             extendedStatistics.setStatistics(apiProperties);
