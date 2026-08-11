@@ -3,7 +3,6 @@
  */
 package com.avispl.symphony.dal.communicator.ppdswave;
 
-import static com.avispl.symphony.dal.util.ControllablePropertyFactory.createPreset;
 import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
@@ -780,8 +779,8 @@ public class PhilipsWaveAggregatorCommunicator extends RestCommunicator implemen
                         processDevicePlaylistContentSources(deviceId, properties, controls, display, playlists);
 
                         String selectedContentSource = deviceSelectedContentSource.get(deviceId);
-                        controls.add(createPreset(Constants.ControlProperties.CONTROL_CONTENT_SOURCE, Arrays.asList(Constants.SourceType.APPLICATION_NAME,
-                                Constants.SourceType.BOOKMARK_NAME, Constants.SourceType.INPUT_NAME, Constants.SourceType.PLAYLIST_NAME), selectedContentSource));
+                        var sourceTypes = Arrays.asList(Constants.SourceType.APPLICATION_NAME, Constants.SourceType.BOOKMARK_NAME, Constants.SourceType.INPUT_NAME, Constants.SourceType.PLAYLIST_NAME);
+                        controls.add(createDropdown(Constants.ControlProperties.CONTROL_CONTENT_SOURCE, sourceTypes, sourceTypes, selectedContentSource));
                         properties.put(Constants.ControlProperties.CONTROL_CONTENT_SOURCE, selectedContentSource);
 
                         processDeviceAppSubscriptions(aggregatedDevice, display);
